@@ -10,6 +10,7 @@ PLOTS_DIR = OUTPUTS_DIR / "plots"
 TABLES_DIR = OUTPUTS_DIR / "tables"
 LANDSCAPE_RASTER_DIR = RASTER_DIR / "landscape_metrics"
 VECTORS_DIR = OUTPUTS_DIR / "vectors"
+RF_CLASSIFIER_DIR = OUTPUTS_DIR / "rf_airbus_classifier"
 # Manually-downloaded Objective 1 (Dynamic World) raster exports -- Drive folder
 # DW_EXPORT_FOLDER (below) is the source of truth; these are not re-exported here, just the local
 # landing folder Objective 3's R scripts read from after a manual Drive download, same convention
@@ -24,6 +25,7 @@ OUTPUT_DIRS = {
     "tables": TABLES_DIR,
     "rasters": RASTER_DIR,
     "vectors": VECTORS_DIR,
+    "rf_airbus_classifier": RF_CLASSIFIER_DIR,
 }
 
 #################### AOI BOUNDARIES ##########################
@@ -300,4 +302,56 @@ LANDTRENDR_MSAVI2SEG_FTV_INDICES = ["NBR", "NDMI", "BSI"]
 LANDTRENDR_RECENT_WINDOWS = {
     "disturbance": [(2016, 2025), (2022, 2025)],
     "recovery": [(2016, 2025)],
+}
+
+#################### AIRBUS 1M RANDOM FOREST LAND-COVER CLASSIFIER ##########################
+# Standalone high-resolution (1 m, 4-band Airbus) classifier -- separate from Objective 1's
+# Dynamic World-derived DW_HABITAT_CLASS_LABELS above (different scheme, different source
+# imagery). Raw inputs (the 4-band mosaic and training GeoPackage) are multi-GB and live outside
+# the repo on the analyst's machine; only output-side config lives here, per
+# scripts/python/notebooks/hab_class.ipynb, which sets the raster/GeoPackage paths itself.
+# Training/model schema -- cultivated is split into two spectrally-distinct subclasses
+# (cultivated_a/cultivated_b, e.g. active vs. bare/harvested cropland) to give the classifier a
+# better shot at separating them from bareground and shrubland; RF_FINAL_CLASS_LABELS collapses
+# them back into a single "cultivated" class for the delivered classification map (see
+# RF_CLASS_REMAP and hab_class.ipynb's combine-classes step).
+RF_CLASS_LABELS = {
+    1: "dense_forest",
+    2: "bareground",
+    3: "grassland",
+    4: "cultivated_a",
+    5: "cultivated_b",
+    6: "shrubland",
+    7: "water",
+    8: "built",
+}
+
+# Final delivered classification schema -- matches the original (pre-split) 7-class scheme.
+RF_FINAL_CLASS_LABELS = {
+    1: "dense_forest",
+    2: "bareground",
+    3: "grassland",
+    4: "cultivated",
+    5: "shrubland",
+    6: "water",
+    7: "built",
+}
+
+# Maps RF_CLASS_LABELS (training) class IDs to RF_FINAL_CLASS_LABELS (delivered) class IDs --
+# cultivated_a and cultivated_b (4, 5) both collapse to "cultivated" (4); everything after them
+# shifts down by one to close the gap.
+RF_CLASS_REMAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 7}
+
+RF_RASTER_NODATA = 65535  # Airbus mosaic NoData value
+RF_CLASSIFICATION_NODATA = 255  # output raster NoData; does not overlap class IDs 1-8
+RF_RANDOM_SEED = 42
+RF_TEST_FRACTION = 0.20
+RF_MAX_PIXELS_PER_POLYGON = 150
+RF_PARAMS = {
+    "n_estimators": 500,
+    "max_features": "sqrt",
+    "min_samples_leaf": 1,
+    "class_weight": "balanced_subsample",
+    "n_jobs": -1,
+    "random_state": RF_RANDOM_SEED,
 }
