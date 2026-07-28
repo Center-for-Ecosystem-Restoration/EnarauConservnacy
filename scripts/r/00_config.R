@@ -126,3 +126,16 @@ PATCH_IMPORTANCE_WEIGHTS <- c(
   betweenness = 0.15,
   pressure    = 0.15   # applied as inverse-normalized pressure
 )
+
+#################### CONNECTIVITY VEGETATION CONDITION (Objective 4, Resistance Model C) ####################
+# Mirrors config.py's CONNECTIVITY_CONDITION_* block -- built by
+# scripts/python/notebooks/connectivity_condition_composite.ipynb, downloaded from Drive folder
+# CONNECTIVITY_CONDITION_EXPORT_FOLDER into RASTER_DIR/connectivity (Objective 4's own R scripts,
+# not yet written, will read condition_score_{wet,dry,current}_2022_2025_project.tif from there).
+CONNECTIVITY_CONDITION_EXPORT_FOLDER <- "CERK_Enarau_Objective4_ConditionComposite"
+CONNECTIVITY_CONDITION_PERIOD <- c(2022, 2025)
+CONNECTIVITY_CONDITION_SCORE_WEIGHTS <- c(
+  productivity      = 0.40,
+  moisture          = 0.35,
+  inverse_bare_soil = 0.25
+)

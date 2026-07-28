@@ -224,7 +224,7 @@ DW_HABITAT_CLASS_VIS = {
     "palette": [
         "#cccccc",  # 0 nodata
         "#397d49",  # 1 woody
-        "#88b053",  # 2 grassland
+        "#e7df44",  # 2 grassland
         "#a3c586",  # 3 mixed natural
         "#e49635",  # 4 cropland
         "#c4281b",  # 5 built
@@ -415,3 +415,38 @@ RF_PARAMS = {
     "n_jobs": -1,
     "random_state": RF_RANDOM_SEED,
 }
+
+#################### CONNECTIVITY VEGETATION CONDITION (Objective 4, Resistance Model C) ####################
+# Recent (non-historical) wet/dry vegetation-condition composite -- feeds Objective 4's
+# condition-adjusted Resistance Model C (wiki objective-4 plan Sec.3.2 Priority 4 / Sec.5.7/6.4).
+# Deliberately NOT Objective 2's full historical anomaly/LandTrendr suite: this is a single
+# current-period snapshot built by scripts/python/notebooks/connectivity_condition_composite.ipynb,
+# reusing the same eetools Sentinel-2 collection builder and PERIODS/SEASON_MONTHS constants
+# Objective 2 already established above, at S2 native 10m (aggregated to the 30m connectivity
+# master grid on the R side, not here).
+CONNECTIVITY_CONDITION_EXPORT_FOLDER = (
+    "CERK_Enarau_Objective4_ConditionComposite"
+)
+CONNECTIVITY_CONDITION_PERIOD = PERIODS[
+    "current"
+]  # (2022, 2025) -- same "current" period as Objective 2
+
+# Plan Sec.5.7's three components. MSAVI2 (not NDVI) for productivity -- same choice and
+# rationale as Objective 2's wet-season MSAVI2 LandTrendr run above (LANDTRENDR_MSAVI2SEG_SEGMENTATION_INDEX):
+# this AOI is savanna/sparse-canopy, where MSAVI2's soil-brightness correction outperforms NDVI.
+# NDMI for moisture, BSI for bare soil (inverted before weighting -- high BSI = more bare/degraded).
+# All three are already in INDEX_BANDS_COMMON, computed by eetools' existing INDEX_REGISTRY -- no
+# new index implementation needed.
+CONNECTIVITY_CONDITION_PRODUCTIVITY_INDEX = "MSAVI2"
+CONNECTIVITY_CONDITION_MOISTURE_INDEX = "NDMI"
+CONNECTIVITY_CONDITION_BARE_SOIL_INDEX = "BSI"
+CONNECTIVITY_CONDITION_SCORE_WEIGHTS = {
+    "productivity": 0.40,
+    "moisture": 0.35,
+    "inverse_bare_soil": 0.25,
+}
+# Robust-percentile clamp-normalize bounds for scaling each raw index to 0-1 before weighting --
+# same "percentile scaling, not raw min-max" approach the plan's Sec.5.6 slope_scaled formula
+# uses (clamp((x-p05)/(p95-p05), 0, 1)); not yet calibrated beyond the plan's own suggestion,
+# same caveat as config.DW_HABITAT_THRESHOLDS before its ground-truth calibration pass.
+CONNECTIVITY_CONDITION_PERCENTILE_BOUNDS = (5, 95)
