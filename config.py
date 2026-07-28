@@ -10,7 +10,7 @@ PLOTS_DIR = OUTPUTS_DIR / "plots"
 TABLES_DIR = OUTPUTS_DIR / "tables"
 LANDSCAPE_RASTER_DIR = RASTER_DIR / "landscape_metrics"
 VECTORS_DIR = OUTPUTS_DIR / "vectors"
-RF_CLASSIFIER_DIR = OUTPUTS_DIR / "rf_airbus_classifier"
+RF_CLASSIFIER_DIR = OUTPUTS_DIR / "rf_hab_classifier"
 # Manually-downloaded Objective 1 (Dynamic World) raster exports -- Drive folder
 # DW_EXPORT_FOLDER (below) is the source of truth; these are not re-exported here, just the local
 # landing folder Objective 3's R scripts read from after a manual Drive download, same convention
@@ -25,7 +25,7 @@ OUTPUT_DIRS = {
     "tables": TABLES_DIR,
     "rasters": RASTER_DIR,
     "vectors": VECTORS_DIR,
-    "rf_airbus_classifier": RF_CLASSIFIER_DIR,
+    "rf_hab_classifier": RF_CLASSIFIER_DIR,
 }
 
 #################### AOI BOUNDARIES ##########################
@@ -109,42 +109,82 @@ DW_MIN_OBS_ANNUAL = 3
 DW_MIN_OBS_SEASONAL = 1
 DW_COVERAGE_WARNING_PCT = 60  # -- QA/reporting threshold only (see coverage_flag); does not mask any pixels
 
-# Habitat classification thresholds -- round 2 recalibration (2026-07-06), following a code fix
-# to classify_habitat's rule precedence (see that function's docstring in the notebook): rules
-# were being applied crops-first/natural-last, and since each `.where()` overwrites matches, the
-# LAST rule silently won -- so cropland pixels with moderate natural_prob were being overwritten
-# to "mixed natural"/grassland/uncertain regardless of threshold values. That is now fixed by
-# reordering (crops has highest effective precedence) and by dropping a redundant
-# dominance-margin check on the "mixed natural" catch-all that left skewed-but-real vegetation
-# signal with no valid class. The threshold nudges below are a secondary, smaller pass on top of
-# that fix, for the residual moderate masking/uncertainty visual QA still showed afterward.
-# Original (2026-07 plan) values noted per key; still starting values pending visual calibration
-# against high-resolution imagery; do not treat as final.
+# Habitat classification thresholds -- round 3 recalibration (2026-07-28), the first
+# ground-truth-quantitative pass (rounds 1-2 were ad hoc visual QA only). Calibrated against a
+# genuine ground-truth layer -- a random-forest classification from 1m 4-band Airbus aerial
+# imagery (outputs/rf_hab_classifier/, RF_TO_DW_HABITAT_CROSSWALK below) -- via a local numpy
+# reimplementation of classify_habitat() in scripts/python/notebooks/calibrate_habitat_thresholds.ipynb:
+# a coordinate-ascent search over all 9 thresholds, maximizing macro-F1 (per-class harmonic mean
+# of recall/precision, averaged across classes with RF reference pixels). Improved kappa
+# 0.325->0.407 and overall accuracy 0.581->0.639 against the RF ground truth. The chosen values
+# were then re-run through the REAL Earth Engine classify_habitat() (not just the local
+# reimplementation) for one current-period confirmation export and found to match the local
+# reimplementation at 100.0000% pixel agreement (0 disagreeing pixels of 1,644,812) -- the
+# accepted risk of the two implementations drifting apart did not materialize.
+#
+# Two classes remain effectively unclassifiable by ANY threshold choice here, for two different,
+# diagnosed reasons (see the calibration notebook's own diagnostic section for the full numbers) --
+# not a gap in this calibration pass, a limitation of classify_habitat()'s rule design and/or this
+# AOI's spectral reality:
+#   - Bare/degraded: at real RF "bareground" pixels, the raw `bare` DW band averages only ~0.08,
+#     and `crops`/`built` outscore it 87% of the time at the same pixel -- the rule's own
+#     dominance check (bare.gt(crops).And(bare.gt(built))) fails on most true bare pixels
+#     regardless of bare_min. This AOI's dry/heavily-grazed ground reads to Dynamic World as
+#     low-vigor crops/grass, not exposed soil. Fixing this needs a classify_habitat() rule-logic
+#     change (e.g. dropping/loosening the dominance check), not a threshold change.
+#   - Water/flooded veg: true water pixels average water_wetland_prob of only ~0.14 against this
+#     threshold of 0.35, which looks under-thresholded from band stats alone -- but water is
+#     extremely rare here (2,045 RF reference pixels, ~0.1-0.2% of scored pixels), so lowering the
+#     threshold trades a small water-recall gain for outsized precision losses on the much larger
+#     Woody/Grassland/Cropland classes at every value tested; 0.35 empirically maximizes macro-F1.
+#
+# A parallel diagnostic checked whether comparing a 2022-2025 4-year composite against a
+# single-year-2025 ground truth (temporal mismatch) was inflating the apparent miscalibration --
+# it was not: a single-year-2025 DW composite scored WORSE across every metric (macro-F1
+# 0.458->0.354) than the 2022-2025 composite used for the real calibration, most likely because a
+# single year pools far fewer Sentinel-2 acquisitions into its median, making it a noisier
+# per-pixel estimate despite being temporally matched to the ground truth. The 2022-2025 composite
+# (the one actually used throughout this pipeline) remains the right calibration target.
+#
+# Not final: calibrated against one ground-truth source at one point in time; the two structural
+# gaps above are known and unresolved. Revisit if a second ground-truth source becomes available,
+# or if classify_habitat()'s rule logic changes.
 
 
 # *** The classification test is probability_band.gte(threshold)Lowering the threshold makes that comparison true for more pixels, so more pixels get assigned to that class.
 DW_HABITAT_THRESHOLDS = {
-    "crops_min": 0.28,  # -- crops is a single raw DW band,
+    "crops_min": 0.14,  # -- crops is a single raw DW band,
     # while natural_prob/woody_prob are SUMS of 2-3 bands; since all 9 class probabilities sum
     # to 1 per pixel, an aggregated band starts from a structurally higher ceiling than any
     # single band, so a similar absolute floor systematically favors natural/woody/grass over
-    # crops even when crops is the clear plurality (e.g. crops=0.28 with the rest thinly spread
-    # across trees/shrub/grass/bare). RISK: crops has the highest effective precedence (see
-    # classify_habitat), so this floor alone decides cropland with no competing-signal check --
-    # watch for false-positive cropland at Mbokishi (the reference/intact-habitat site) after
-    # this change; walk back toward ~0.28-0.30 if it appears there.
-    "built_min": 0.38,  # -- built-up pixels are often small/mixed, per the plan's own note
-    "water_wetland_min": 0.35,
-    "bare_min": 0.30,
-    "woody_min": 0.40,
-    "grass_min": 0.35,
-    "woody_grass_margin": 0.06,  # -- smaller dominance gap needed to call woody vs. grass
-    "natural_min": 0.30,  # -- the "mixed natural habitat"
+    # crops even when crops is the clear plurality. RISK: crops has the highest effective
+    # precedence (see classify_habitat), so this floor alone decides cropland with no
+    # competing-signal check -- the ground-truth search pushed this well below round 2's 0.28,
+    # which raised Cropland recall substantially (0.082->0.398); re-check Mbokishi (the
+    # reference/intact-habitat site) for false-positive cropland if this ever needs revisiting.
+    "built_min": 0.25,  # -- built-up pixels are often small/mixed, per the plan's own note;
+    # lowered from round 2's 0.38 by the ground-truth search.
+    "water_wetland_min": 0.35,  # -- unchanged from round 2; the ground-truth search confirmed
+    # this is macro-F1-optimal despite looking under-thresholded from raw band stats alone (see
+    # the round-3 note above -- water is too rare here for a lower threshold to pay off).
+    "bare_min": 0.30,  # -- unchanged from round 2; not the binding constraint for Bare/degraded
+    # (see the round-3 note above -- this class fails the rule's dominance check structurally,
+    # not a threshold problem).
+    "woody_min": 0.43,
+    "grass_min": 0.00,  # -- combined with woody_grass_margin=0.00 below, the grass rule reduces
+    # to "grass_prob >= woody_prob" with no absolute floor -- a pixel with real but very low
+    # vegetation signal on both bands can now be called Grassland purely on which one is larger.
+    # Empirically the macro-F1-maximizing choice against ground truth; watch for implausible
+    # grassland calls in very low-signal (e.g. bare-adjacent) areas if this AOI's composition
+    # changes materially.
+    "woody_grass_margin": 0.00,  # -- no dominance gap required between woody vs. grass (round 2
+    # used 0.06); see grass_min's note above for the combined effect.
+    "natural_min": 0.30,  # -- unchanged from round 2; the "mixed natural habitat"
     # catch-all; a true fallback (no margin restriction, see notebook classify_habitat) so this
     # is the main lever for how much moderate-confidence vegetation signal counts as classifiable
-    "top1_min": 0.25,  # -- DW confidence proxy; sand/bare/arid surfaces
+    "top1_min": 0.26,  # -- DW confidence proxy; sand/bare/arid surfaces
     # are known to depress top1_prob by scoring across multiple classes at once (see
-    # wiki/tools/dynamic-world.md)
+    # wiki/tools/dynamic-world.md). Nudged up slightly from round 2's 0.25 by the ground-truth search.
 }
 DW_HABITAT_CLASS_CODES = list(
     range(1, 9)
@@ -342,8 +382,28 @@ RF_FINAL_CLASS_LABELS = {
 # shifts down by one to close the gap.
 RF_CLASS_REMAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 7}
 
+# Crosswalk from RF_FINAL_CLASS_LABELS (this classifier's delivered 7-class scheme) to
+# DW_HABITAT_CLASS_LABELS (Objective 1's 8-class scheme), for using the RF map as ground truth to
+# calibrate DW_HABITAT_THRESHOLDS (scripts/python/notebooks/calibrate_habitat_thresholds.ipynb).
+# shrubland -> Woody(1), matching Dynamic World's own woody_prob = trees + shrub_and_scrub (this
+# repo's habitat scheme has no separate "shrubland" class). DW's Mixed natural(3)/Uncertain(8)
+# have no RF equivalent and never appear as a crosswalk value -- they can still appear as
+# classify_habitat() predictions, just with no ground-truth pixels to score producer's accuracy
+# against (see calibrate_habitat_thresholds.ipynb's compare_to_reference()).
+RF_TO_DW_HABITAT_CROSSWALK = {
+    1: 1,  # dense_forest  -> Woody
+    2: 6,  # bareground    -> Bare/degraded
+    3: 2,  # grassland     -> Grassland
+    4: 4,  # cultivated    -> Cropland
+    5: 1,  # shrubland     -> Woody
+    6: 7,  # water         -> Water/flooded veg
+    7: 5,  # built         -> Built
+}
+
 RF_RASTER_NODATA = 65535  # Airbus mosaic NoData value
-RF_CLASSIFICATION_NODATA = 255  # output raster NoData; does not overlap class IDs 1-8
+RF_CLASSIFICATION_NODATA = (
+    255  # output raster NoData; does not overlap class IDs 1-8
+)
 RF_RANDOM_SEED = 42
 RF_TEST_FRACTION = 0.20
 RF_MAX_PIXELS_PER_POLYGON = 150
