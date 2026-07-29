@@ -1,8 +1,9 @@
 # Master-grid / raster-alignment plumbing for Objective 4. No equivalent existed before this --
-# Objective 3 only ever resampled ad hoc onto whichever raster happened to load first (see
-# 06_figures_and_exports.R's grid_template pattern) -- Objective 4 needs a real, explicit one
-# since it aligns many more heterogeneous raw sources (vectors, categorical land cover, continuous
-# rasters at multiple native resolutions) onto one shared 30m grid.
+# Objective 3 only ever resampled ad hoc onto whichever raster happened to load first (a pattern
+# that lived in its now-removed patch-graph/linkage-score synthesis code, see R/patch_graph.R's
+# header comment) -- Objective 4 needs a real, explicit one since it aligns many more
+# heterogeneous raw sources (vectors, categorical land cover, continuous rasters at multiple
+# native resolutions) onto one shared 30m grid.
 
 #' Build the Objective 4 30m master grid: an empty template SpatRaster covering
 #' project_geom_vect(), with its extent rounded outward to a clean CONNECTIVITY_GRID_RESOLUTION_M

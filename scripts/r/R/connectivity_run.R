@@ -20,7 +20,7 @@ ini_bool <- function(x) if (isTRUE(x)) "True" else "False"
 #' (`project_1`, `project_2`, ...) instead of reusing/overwriting an existing directory, which
 #' silently orphans results if this function's caller has already created that same directory
 #' (e.g. to hold input rasters). Keep input rasters in a SEPARATE directory from `project_dir` --
-#' see 10_run_omniscape.R's `inputs/`/`output/` split -- and treat `project_dir`'s existence as
+#' see 09_run_omniscape.R's `inputs/`/`output/` split -- and treat `project_dir`'s existence as
 #' this scenario's own "already run" signal for idempotent re-runs.
 #' @return The config file path (invisibly).
 write_omniscape_config <- function(resistance_path, source_path, radius_cells, project_dir,

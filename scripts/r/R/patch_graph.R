@@ -1,6 +1,18 @@
-# Patch delineation, patch-level metrics, and the igraph Euclidean patch-graph connectivity
-# screen. Runs on the full project-extent binary natural-habitat raster (see masking-order rule
-# in 00_config.R/plan) -- a corridor patch spanning two sites must not be truncated.
+# Patch delineation and patch-level metrics. Runs on the full project-extent binary
+# natural-habitat raster (see masking-order rule in 00_config.R/plan) -- a corridor patch spanning
+# two sites must not be truncated.
+#
+# The igraph Euclidean-distance patch-graph connectivity screen this file used to also contain
+# (build_patch_graph(), mean_pressure_around_patches()) was removed 2026-07-29: it was always
+# documented as "a structural approximation" standing in for real resistance-based connectivity
+# (see wiki [[circuit-theory-connectivity]]) until Objective 4's Circuitscape/Omniscape analysis
+# existed. That analysis is now built (scripts/r/06-11_*.R) and supersedes it, so the Euclidean
+# graph and its dependent linkage_priority_score synthesis (formerly in
+# 05_patch_importance_graph.R and part of 06_figures_and_exports.R) were deleted rather than kept
+# alongside a better answer to the same question. delineate_patches()/calculate_patch_metrics()/
+# calculate_patch_nearest_neighbor()/attribute_patches_to_sites() below are unaffected -- they're
+# generic patch-delineation utilities reused by both Objective 3 (03/04_*.R) and Objective 4
+# (08_habitat_patches_focal_nodes.R).
 
 #' Delineate patches from a binary natural-habitat raster (1 = natural, 0 = converted, NA =
 #' excluded), filter to >= MIN_PATCH_AREA_HA, and return both the cleaned patch-ID raster and its
@@ -11,8 +23,9 @@
 #' patch_id numbering. With zeroAsNA = TRUE, only class-1 (natural) cells receive patch IDs --
 #' the same connected-component labeling landscapemetrics::calculate_lsm(level="patch") uses
 #' internally for this class, on the same directions=8 setting, so the resulting patch_id values
-#' are expected to align with calculate_patch_metrics()'s own `id` column. This is verified in
-#' 05_patch_importance_graph.R (patch count cross-check) rather than assumed silently.
+#' are expected to align with calculate_patch_metrics()'s own `id` column. This is verified via a
+#' patch-count cross-check in each caller (e.g. 08_habitat_patches_focal_nodes.R) rather than
+#' assumed silently.
 delineate_patches <- function(r_bin_natural) {
   patch_id <- terra::patches(r_bin_natural, directions = 8, zeroAsNA = TRUE)
   pixel_area_ha <- prod(terra::res(patch_id)) / 10000
@@ -60,9 +73,9 @@ calculate_patch_metrics <- function(patch_id_raster) {
 }
 
 #' Nearest-neighbor distance (m) from each patch to its closest OTHER patch, computed directly
-#' from patch_poly's own geometry (polygon-to-polygon, not centroid-to-centroid) -- reuses the
-#' same st_distance() approach as build_patch_graph() rather than landscapemetrics' lsm_p_enn,
-#' which has the same ID-mismatch problem as calculate_patch_metrics() above.
+#' from patch_poly's own geometry (polygon-to-polygon, not centroid-to-centroid) -- uses
+#' sf::st_distance() rather than landscapemetrics' lsm_p_enn, which has the same ID-mismatch
+#' problem as calculate_patch_metrics() above.
 calculate_patch_nearest_neighbor <- function(patch_poly) {
   patch_sf <- sf::st_as_sf(patch_poly)
   n <- nrow(patch_sf)
@@ -92,41 +105,4 @@ attribute_patches_to_sites <- function(patch_poly, sites_sf) {
     )
   })
   do.call(rbind, summary_rows)
-}
-
-#' Mean conversion pressure within a buffer around each patch polygon.
-mean_pressure_around_patches <- function(patch_poly, pressure_raster, buffer_m = PATCH_PRESSURE_BUFFER_M) {
-  patch_sf <- sf::st_as_sf(patch_poly)
-  buffered <- sf::st_buffer(patch_sf, dist = buffer_m)
-  vals <- terra::extract(pressure_raster, terra::vect(buffered), fun = mean, na.rm = TRUE, ID = FALSE)
-  data.frame(patch_id = patch_sf$patch_id, mean_pressure = vals[[1]])
-}
-
-#' Build an igraph patch graph at one distance threshold. Edges are polygon-to-polygon Euclidean
-#' distance (sf::st_distance), not centroid distance -- a large, irregular patch is closer to its
-#' neighbor at its nearest edge than its centroid-to-centroid distance would suggest.
-build_patch_graph <- function(patch_poly, distance_threshold_m) {
-  patch_sf <- sf::st_as_sf(patch_poly)
-  n <- nrow(patch_sf)
-  dist_mat <- sf::st_distance(patch_sf)
-  dist_mat <- units::drop_units(dist_mat)
-
-  edges <- which(dist_mat <= distance_threshold_m & upper.tri(dist_mat), arr.ind = TRUE)
-  edge_df <- data.frame(
-    from = patch_sf$patch_id[edges[, 1]],
-    to   = patch_sf$patch_id[edges[, 2]],
-    distance_m = dist_mat[edges]
-  )
-
-  g <- igraph::graph_from_data_frame(edge_df, directed = FALSE, vertices = data.frame(name = patch_sf$patch_id))
-
-  data.frame(
-    patch_id = patch_sf$patch_id,
-    degree = igraph::degree(g),
-    betweenness = igraph::betweenness(g),
-    component = igraph::components(g)$membership,
-    is_articulation_point = patch_sf$patch_id %in% names(igraph::articulation_points(g))
-  ) -> node_metrics
-
-  list(graph = g, node_metrics = node_metrics, edges = edge_df)
 }

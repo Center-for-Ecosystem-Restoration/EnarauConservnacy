@@ -1,10 +1,10 @@
-# Step 12 (Objective 4): consensus mapping, bottleneck/barrier candidates, protection/restoration
+# Step 11 (Objective 4): consensus mapping, bottleneck/barrier candidates, protection/restoration
 # priority, and patch-level importance scores (plan Sec.11-12).
 #
-# RUN AS: cd scripts/r && Rscript 12_consensus_priority_mapping.R
+# RUN AS: cd scripts/r && Rscript 11_consensus_priority_mapping.R
 #
-# Requires steps 08 (resistance/source-strength), 09 (patches/focal nodes), 10 (Omniscape, all 6
-# scenarios), and 11 (Circuitscape pairwise + all-to-one) to have already run.
+# Requires steps 07 (resistance/source-strength), 08 (patches/focal nodes), 09 (Omniscape, all 6
+# scenarios), and 10 (Circuitscape pairwise + all-to-one) to have already run.
 
 source("00_config.R")
 source("R/io.R")
@@ -17,7 +17,7 @@ read_connectivity_raster <- function(name) {
   terra::rast(file.path(CONNECTIVITY_RASTER_DIR, paste0(name, ".tif")))
 }
 
-message("=== 12_consensus_priority_mapping: loading step-08/09/10/11 outputs ===")
+message("=== 11_consensus_priority_mapping: loading step-07/08/09/10 outputs ===")
 resistance_c <- read_connectivity_raster("resistance_models_30m")[["resistance_C"]]
 source_primary <- read_connectivity_raster("source_strength_models_30m")[["source_primary"]]
 built_fraction <- read_connectivity_raster("built_fraction_30m")
@@ -102,7 +102,7 @@ patch_table <- readr::read_csv(file.path(TABLES_DIR, "connectivity_patch_metrics
 patch_poly <- terra::vect(sf::st_read(file.path(VECTORS_DIR, "connectivity_habitat_patches_current.gpkg"), quiet = TRUE)[, "patch_id"])
 
 # mean/max Omniscape normalized_current per patch, across all 6 scenarios (fills in the
-# mean_omniscape_current/max_omniscape_current columns step 09 deliberately left for this step).
+# mean_omniscape_current/max_omniscape_current columns step 08 deliberately left for this step).
 omniscape_patch_stats <- Reduce(function(a, b) dplyr::left_join(a, b, by = "patch_id"), lapply(scenario_labels, function(lbl) {
   patch_current_stats(patch_poly, normalized_current_list[[lbl]], paste0("omniscape_current_", lbl))
 }))
@@ -145,7 +145,7 @@ patch_table$restoration_importance_score <- compute_restoration_importance(
 
 readr::write_csv(patch_table, file.path(TABLES_DIR, "connectivity_patch_importance_scores_current.csv"))
 
-message("=== 12_consensus_priority_mapping complete ===")
+message("=== 11_consensus_priority_mapping complete ===")
 message("Top 5 patches by protection_importance_score:")
 print(patch_table[order(-patch_table$protection_importance_score), c("patch_id", "primary_site_id", "area_ha", "protection_importance_score")][1:5, ])
 message("Top 5 patches by restoration_importance_score:")

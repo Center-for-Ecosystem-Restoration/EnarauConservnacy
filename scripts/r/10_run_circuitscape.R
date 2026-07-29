@@ -1,26 +1,28 @@
-# Step 11 (Objective 4): Circuitscape pairwise + all-to-one runs on the 8 focal nodes (plan
+# Step 10 (Objective 4): Circuitscape pairwise + all-to-one runs on the focal nodes (plan
 # Sec.10.5).
 #
-# RUN AS: cd scripts/r && Rscript 11_run_circuitscape.R
+# RUN AS: cd scripts/r && Rscript 10_run_circuitscape.R
 #
 # This script only does the FAST prep work: builds the focal-node point raster and writes the
 # pairwise/all-to-one INI configs. It deliberately does NOT invoke Julia itself -- pairwise mode
-# solves a GLOBAL circuit (not moving-window like Omniscape) once per focal-node pair (28 pairs
-# for 8 nodes), and step 10's experience showed even Omniscape's single largest scenario can run
-# well past the calling tool's ability to babysit a blocking call; treat the actual Julia
-# invocation as a separate, explicitly-launched step per config (see the run manifest this script
-# stages), same as 10_run_omniscape.R's individual scenarios ended up needing.
+# solves a GLOBAL circuit (not moving-window like Omniscape) once per focal-node pair, and step
+# 09's experience showed even Omniscape's single largest scenario can run well past the calling
+# tool's ability to babysit a blocking call; treat the actual Julia invocation as a separate,
+# explicitly-launched step per config (see the run manifest this script stages), same as
+# 09_run_omniscape.R's individual scenarios ended up needing.
 #
 # Uses Resistance Model C (the plan's "recommended production model after validation", Sec.7.6,
 # and the exact choice its own Sec.13.9 R implementation outline makes for both cs_pairwise and
-# cs_all_to_one) -- not a re-run across all three resistance models.
+# cs_all_to_one) -- not a re-run across all three resistance models. Focal-node count is whatever
+# 08_habitat_patches_focal_nodes.R selected (6 as of the 2026-07-29 settlement-heatmap fix, not a
+# fixed number -- don't hardcode an expected pair count here or in downstream reporting).
 
 source("00_config.R")
 source("R/io.R")
 source("R/grid.R")
 source("R/connectivity_run.R")
 
-message("=== 11_run_circuitscape: loading step-08/09 outputs ===")
+message("=== 10_run_circuitscape: loading step-07/08 outputs ===")
 resistance_c <- terra::rast(file.path(CONNECTIVITY_RASTER_DIR, "resistance_models_30m.tif"))[["resistance_C"]]
 master_grid <- build_master_grid()
 
@@ -66,4 +68,4 @@ message(sprintf('  "%s" -t%d "%s" "%s"', JULIA_BIN, JULIA_THREADS,
 message(sprintf('  "%s" -t%d "%s" "%s"', JULIA_BIN, JULIA_THREADS,
                 file.path(JULIA_SCRIPTS_DIR, "run_circuitscape.jl"), all_to_one_config))
 
-message("=== 11_run_circuitscape prep complete ===")
+message("=== 10_run_circuitscape prep complete ===")

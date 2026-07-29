@@ -1,10 +1,10 @@
-# Step 08 (Objective 4): land-cover permeability/confidence, resistance Models A/B/C, and
+# Step 07 (Objective 4): land-cover permeability/confidence, resistance Models A/B/C, and
 # source-strength surfaces (plan Sec.6-8).
 #
-# RUN AS: cd scripts/r && Rscript 08_build_resistance_source_surfaces.R
+# RUN AS: cd scripts/r && Rscript 07_build_resistance_source_surfaces.R
 # (see 00_config.R's header comment on why -- renv only activates from scripts/r/ as cwd)
 #
-# Requires 07_prepare_connectivity_inputs.R to have already run (reads its outputs from
+# Requires 06_prepare_connectivity_inputs.R to have already run (reads its outputs from
 # CONNECTIVITY_RASTER_DIR). No fence data exists yet -- Resistance Model D is not built here; only
 # the neutral riparian-factor scenario feeds the default Model C (facilitation scenario is written
 # alongside for later sensitivity testing, plan Sec.14.1, not consumed by default).
@@ -19,7 +19,7 @@ read_connectivity_raster <- function(name) {
   terra::rast(file.path(CONNECTIVITY_RASTER_DIR, paste0(name, ".tif")))
 }
 
-message("=== 08_build_resistance_source_surfaces: loading step-07 outputs ===")
+message("=== 07_build_resistance_source_surfaces: loading step-06 outputs ===")
 fraction_stack <- read_connectivity_raster("landcover_class_fractions_30m")
 natural_fraction <- read_connectivity_raster("natural_cover_fraction_30m")
 built_fraction <- read_connectivity_raster("built_fraction_30m")
@@ -81,4 +81,4 @@ terra::writeRaster(riparian_facilitation, file.path(CONNECTIVITY_RASTER_DIR, "ri
 terra::writeRaster(resistance_models, file.path(CONNECTIVITY_RASTER_DIR, "resistance_models_30m.tif"), overwrite = TRUE)
 terra::writeRaster(source_strength, file.path(CONNECTIVITY_RASTER_DIR, "source_strength_models_30m.tif"), overwrite = TRUE)
 
-message("=== 08_build_resistance_source_surfaces complete ===")
+message("=== 07_build_resistance_source_surfaces complete ===")

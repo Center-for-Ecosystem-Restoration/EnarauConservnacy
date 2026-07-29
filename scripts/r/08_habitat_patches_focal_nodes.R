@@ -1,16 +1,17 @@
-# Step 09 (Objective 4): habitat patches + focal nodes (plan Sec.10).
+# Step 08 (Objective 4): habitat patches + focal nodes (plan Sec.10).
 #
-# RUN AS: cd scripts/r && Rscript 09_habitat_patches_focal_nodes.R
+# RUN AS: cd scripts/r && Rscript 08_habitat_patches_focal_nodes.R
 #
 # Rebuilds patches from the NEW land-cover-derived core-habitat mask -- NOT a reuse of Objective
 # 3's Dynamic-World-based patches (plan's own resolution of that open question, see wiki Sec.
-# "Open Questions"). No igraph Euclidean patch-graph is built here (unlike Objective 3's
-# 05_patch_importance_graph.R) -- that structural approximation is explicitly superseded by this
-# objective's real resistance-based Circuitscape/Omniscape current-flow measures (see
-# [[circuit-theory-connectivity]]'s Related Methods note); "stepping-stone position"/"connectivity
-# contribution" scores are computed in step 12 from actual current-flow output, once it exists.
-# mean_omniscape_current/max_omniscape_current (plan Sec.10.2) are therefore NOT in this script's
-# patch table -- step 12 joins them in after Omniscape (step 10) has run.
+# "Open Questions"). No igraph Euclidean patch-graph is built here -- Objective 3's own version of
+# that approach (formerly 05_patch_importance_graph.R) has since been removed entirely, since it's
+# explicitly superseded by this objective's real resistance-based Circuitscape/Omniscape
+# current-flow measures (see [[circuit-theory-connectivity]]'s Related Methods note);
+# "stepping-stone position"/"connectivity contribution" scores are computed in step 11 from actual
+# current-flow output, once it exists. mean_omniscape_current/max_omniscape_current (plan Sec.10.2)
+# are therefore NOT in this script's patch table -- step 11 joins them in after Omniscape (step 09)
+# has run.
 
 source("00_config.R")
 source("R/io.R")
@@ -23,7 +24,7 @@ read_connectivity_raster <- function(name) {
   terra::rast(file.path(CONNECTIVITY_RASTER_DIR, paste0(name, ".tif")))
 }
 
-message("=== 09_habitat_patches_focal_nodes: loading step-07/08 outputs ===")
+message("=== 08_habitat_patches_focal_nodes: loading step-06/07 outputs ===")
 natural_fraction <- read_connectivity_raster("natural_cover_fraction_30m")
 landcover_perm <- read_connectivity_raster("landcover_permeability_30m")
 settlement_pressure_r <- read_connectivity_raster("settlement_pressure_30m")
@@ -125,4 +126,4 @@ terra::writeRaster(
   overwrite = TRUE
 )
 
-message("=== 09_habitat_patches_focal_nodes complete ===")
+message("=== 08_habitat_patches_focal_nodes complete ===")

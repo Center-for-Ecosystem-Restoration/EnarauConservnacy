@@ -1,5 +1,5 @@
 # Land-cover permeability/confidence, resistance Models A/B/C, and source-strength surfaces
-# (plan Sec.6-8). Consumes the aligned 30m layers step 07 (07_prepare_connectivity_inputs.R)
+# (plan Sec.6-8). Consumes the aligned 30m layers step 06 (06_prepare_connectivity_inputs.R)
 # already wrote to CONNECTIVITY_RASTER_DIR -- nothing here reads a raw input directly.
 
 #' Weighted sum of a class_fraction_stack()'s per-class bands against a named lookup of

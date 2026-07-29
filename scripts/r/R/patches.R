@@ -1,10 +1,12 @@
 # Objective 4's own habitat-patch/focal-node logic (plan Sec.10). Patch DELINEATION reuses
-# R/metrics.R's/R/patch_graph.R's generic functions unchanged (delineate_patches,
-# calculate_patch_metrics, calculate_patch_nearest_neighbor, attribute_patches_to_sites,
-# build_patch_graph all operate on any binary-natural raster/patch polygon regardless of source) --
-# only the core-habitat mask, per-patch attribute extraction, tiering, and focal-node selection
-# are new here, since Objective 4 rebuilds patches from the NEW land-cover classification rather
-# than reusing Objective 3's Dynamic-World-based ones (plan's own resolution of that open question).
+# R/patch_graph.R's generic functions unchanged (delineate_patches, calculate_patch_metrics,
+# calculate_patch_nearest_neighbor, attribute_patches_to_sites all operate on any binary-natural
+# raster/patch polygon regardless of source) -- only the core-habitat mask, per-patch attribute
+# extraction, tiering, and focal-node selection are new here, since Objective 4 rebuilds patches
+# from the NEW land-cover classification rather than reusing Objective 3's Dynamic-World-based
+# ones (plan's own resolution of that open question). No igraph patch-graph is built for Objective
+# 4 -- see R/patch_graph.R's header comment on why that Euclidean-distance approach was removed
+# entirely (superseded by this objective's own real current-flow analysis, not reused by it).
 
 #' Binary core-habitat raster (1/0/NA) per plan Sec.10.1: natural_fraction >= 0.70 AND
 #' landcover_permeability >= 0.70 AND settlement_pressure <= 0.25. All three inputs must already
@@ -19,9 +21,8 @@ build_core_habitat_mask <- function(natural_fraction, landcover_permeability, se
   out
 }
 
-#' Mean value of `r` WITHIN each patch polygon itself (no buffer) -- distinct from
-#' R/patch_graph.R's mean_pressure_around_patches(), which buffers OUTWARD from the patch.
-#' Returns a data.frame(patch_id, <band_name>).
+#' Mean value of `r` WITHIN each patch polygon itself (no buffer, unlike a buffer-outward
+#' "surrounding pressure" measure). Returns a data.frame(patch_id, <band_name>).
 mean_within_patches <- function(patch_poly, r, band_name) {
   vals <- terra::extract(r, patch_poly, fun = mean, na.rm = TRUE, ID = FALSE)
   out <- data.frame(patch_id = patch_poly$patch_id, value = vals[[1]])

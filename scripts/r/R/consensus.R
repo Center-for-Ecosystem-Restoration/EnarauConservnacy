@@ -1,5 +1,5 @@
 # Consensus mapping, bottleneck/barrier candidates, and protection/restoration priority surfaces
-# (plan Sec.11-12). Operates on step 08's resistance/source-strength rasters and step 10-11's
+# (plan Sec.11-12). Operates on step 07's resistance/source-strength rasters and step 09-10's
 # Omniscape/Circuitscape outputs -- no new resistance/permeability logic here.
 
 #' The raw value at the `pct`-th percentile of `r` (landscape-wide, not per-site) -- the building

@@ -87,7 +87,7 @@ CONNECTIVITY_GRID_RESOLUTION_M <- 30
 CONNECTIVITY_LANDCOVER_SOURCE_RESOLUTION_M <- 10  # outputs/rf_hab_classifier/*_10m_clipped.tif
 
 CONNECTIVITY_RASTER_DIR <- file.path(RASTER_DIR, "connectivity")
-CONNECTIVITY_OUTPUT_DIR <- file.path(OUTPUTS_DIR, "connectivity")  # omniscape/circuitscape run dirs (10-13)
+CONNECTIVITY_OUTPUT_DIR <- file.path(OUTPUTS_DIR, "connectivity")  # omniscape/circuitscape run dirs (09-11)
 for (d in c(CONNECTIVITY_RASTER_DIR, CONNECTIVITY_OUTPUT_DIR)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
 }
@@ -144,7 +144,7 @@ RESISTANCE_C_WEIGHTS <- c(
 BUILT_FRACTION_RESISTANCE_FLOOR <- list(threshold = 0.50, floor = 150)  # plan Sec.7.2/7.3
 
 # Neutral vs. riparian-facilitation scenario values feeding the Resistance-C riparian term (plan
-# Sec.7.3) -- built from riparian_buffer_30m.tif/riparian_natural_cover_30m.tif (step 07).
+# Sec.7.3) -- built from riparian_buffer_30m.tif/riparian_natural_cover_30m.tif (step 06).
 RIPARIAN_FACTOR_NEUTRAL <- 0.50
 RIPARIAN_FACTOR_FACILITATION <- 0.85  # plan's 0.75-1.00 range, midpoint-ish starting value
 
@@ -196,7 +196,7 @@ FOCAL_NODE_TARGET_COUNTS <- c(enarau = 3, mbokishi = 3, corridor_p1 = 5, corrido
 # Julia was installed by JuliaCall's own installer (still usable for this, since only ITS RCall
 # bridge is broken) to a fixed, non-project path -- not managed by renv (Julia/Julia packages are
 # a separate ecosystem from R's library system). Confirm this path still exists before running
-# 10_run_omniscape.R/11_run_circuitscape.R on a new machine; it will differ per machine.
+# 09_run_omniscape.R/10_run_circuitscape.R on a new machine; it will differ per machine.
 JULIA_BIN <- "C:/Users/harre/AppData/Roaming/R/data/R/JuliaCall/julia/1.9.4/julia-1.9.4/bin/julia.exe"
 JULIA_SCRIPTS_DIR <- file.path(REPO_ROOT, "scripts", "julia")
 JULIA_THREADS <- 4L
@@ -302,10 +302,9 @@ VALID_PIXEL_COVERAGE_MIN <- 0.80  # site-years below this show artificial
 EDGE_DEPTH_CELLS <- 1
 
 MOVING_WINDOW_RADII_M <- c(250, 500, 1000)
-PATCH_GRAPH_DISTANCE_THRESHOLDS_M <- c(250, 500, 1000)
 MIN_PATCH_AREA_HA <- 1
-PATCH_PRESSURE_BUFFER_M <- 100        # "mean conversion pressure around patch" buffer distance
-CORRIDOR_PROXIMITY_DECAY_M <- 2000    # linear decay-to-zero distance from corridor_p1 U corridor_p2
+CORRIDOR_PROXIMITY_DECAY_M <- 2000    # linear decay-to-zero distance from corridor_p1 U corridor_p2;
+                                       # also reused by Objective 4's patch protection/restoration scoring
 
 #################### CORRELATION / METRIC SETS ####################
 SELECTED_CLASS_METRICS <- c(
@@ -315,22 +314,9 @@ SELECTED_CLASS_METRICS <- c(
 SELECTED_BINARY_METRICS <- setdiff(SELECTED_CLASS_METRICS, "lsm_c_ca")  # CA not meaningful for a 1-class binary landscape
 CORRELATION_FLAG_THRESHOLD <- 0.85
 
-#################### LINKAGE PRIORITY SCORE WEIGHTS (06) ####################
-LINKAGE_SCORE_WEIGHTS <- c(
-  persistent_or_recovered_natural = 0.25,
-  local_connectivity              = 0.20,
-  patch_importance                = 0.20,
-  low_conversion_pressure         = 0.15,
-  bottleneck_relevance             = 0.10,
-  corridor_proximity              = 0.10
-)
-PATCH_IMPORTANCE_WEIGHTS <- c(
-  area        = 0.30,
-  core        = 0.20,
-  isolation   = 0.20,  # applied as inverse-normalized ENN
-  betweenness = 0.15,
-  pressure    = 0.15   # applied as inverse-normalized pressure
-)
+# PATCH_GRAPH_DISTANCE_THRESHOLDS_M, PATCH_PRESSURE_BUFFER_M, LINKAGE_SCORE_WEIGHTS, and
+# PATCH_IMPORTANCE_WEIGHTS (Objective 3's Euclidean patch-graph scoring) were removed 2026-07-29
+# along with the rest of that workflow -- see R/patch_graph.R's header comment for why.
 
 #################### CONNECTIVITY VEGETATION CONDITION (Objective 4, Resistance Model C) ####################
 # Mirrors config.py's CONNECTIVITY_CONDITION_* block -- built by

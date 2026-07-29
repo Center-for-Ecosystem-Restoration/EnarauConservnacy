@@ -1,8 +1,8 @@
-# Step 10 (Objective 4): Omniscape runs (plan Sec.9).
+# Step 09 (Objective 4): Omniscape runs (plan Sec.9).
 #
-# RUN AS: cd scripts/r && Rscript 10_run_omniscape.R
+# RUN AS: cd scripts/r && Rscript 09_run_omniscape.R
 #
-# Requires 08_build_resistance_source_surfaces.R to have already run. Builds the full plan
+# Requires 07_build_resistance_source_surfaces.R to have already run. Builds the full plan
 # Sec.9.3 minimum run set (OMNISCAPE_RUN_SET, 00_config.R) as an explicit task list. Each
 # scenario's `output/` directory existing is its own "already run" signal (idempotent re-runs) --
 # see R/connectivity_run.R's write_omniscape_config() docs for why inputs and Omniscape's own
@@ -24,7 +24,7 @@ read_connectivity_raster <- function(name) {
   terra::rast(file.path(CONNECTIVITY_RASTER_DIR, paste0(name, ".tif")))
 }
 
-message("=== 10_run_omniscape: loading step-08 outputs ===")
+message("=== 09_run_omniscape: loading step-07 outputs ===")
 resistance_models <- read_connectivity_raster("resistance_models_30m")
 source_strength <- read_connectivity_raster("source_strength_models_30m")
 
@@ -91,5 +91,5 @@ if (length(todo) == 0) {
   }
 }
 
-message("=== 10_run_omniscape complete ===")
+message("=== 09_run_omniscape complete ===")
 if (!is.null(manifest)) print(manifest[, c("label", "status", "elapsed_s")])

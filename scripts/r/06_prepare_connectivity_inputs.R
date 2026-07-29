@@ -1,7 +1,7 @@
-# Step 07 (Objective 4): master grid + raw-input alignment.
+# Step 06 (Objective 4): master grid + raw-input alignment.
 #
-# RUN AS: cd scripts/r && Rscript 07_prepare_connectivity_inputs.R
-# (NOT `Rscript scripts/r/07_prepare_connectivity_inputs.R` from the repo root -- renv only
+# RUN AS: cd scripts/r && Rscript 06_prepare_connectivity_inputs.R
+# (NOT `Rscript scripts/r/06_prepare_connectivity_inputs.R` from the repo root -- renv only
 # activates when the working directory is scripts/r/ itself. See 00_config.R's header comment.)
 #
 # Builds the 30m connectivity master grid and aligns every Objective 4 raw input onto it (plan
@@ -21,7 +21,7 @@ source("R/landcover.R")
 source("R/pressure.R")
 source("R/qa.R")
 
-message("=== 07_prepare_connectivity_inputs: building master grid ===")
+message("=== 06_prepare_connectivity_inputs: building master grid ===")
 master_grid <- build_master_grid()
 message(sprintf(
   "Master grid: %dx%d cells @ %dm, extent %s, CRS %s",
@@ -122,5 +122,5 @@ for (season in names(condition_score_aligned)) {
   )
 }
 
-message("=== 07_prepare_connectivity_inputs complete ===")
+message("=== 06_prepare_connectivity_inputs complete ===")
 message(sprintf("Wrote %d raster files to %s", 13 + length(condition_score_aligned), CONNECTIVITY_RASTER_DIR))
