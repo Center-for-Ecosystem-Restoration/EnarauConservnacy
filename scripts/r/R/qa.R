@@ -60,3 +60,34 @@ report_excluded_rows <- function(coverage_table, context_label) {
   }
   invisible(excluded)
 }
+
+#' Objective 4 grid-alignment QA: verify every raster in `rasters` (a named list) shares the
+#' master grid's exact CRS/extent/dims, and report each raster's finite-value range. Doesn't
+#' enforce any particular range itself (callers interpret per-layer) -- just surfaces NaN/Inf and
+#' geometry drift loudly, same "never a silent pass" spirit as report_excluded_rows() above.
+check_connectivity_grid_alignment <- function(rasters, master_grid) {
+  ref_ext <- as.vector(terra::ext(master_grid))
+  ref_dim <- dim(master_grid)[1:2]
+  results <- lapply(names(rasters), function(nm) {
+    r <- rasters[[nm]]
+    ext_ok <- isTRUE(all.equal(as.vector(terra::ext(r)), ref_ext))
+    dim_ok <- identical(dim(r)[1:2], ref_dim)
+    crs_ok <- terra::same.crs(r, master_grid)
+    vals <- terra::values(r, na.rm = TRUE)
+    rng <- if (length(vals) > 0) range(vals) else c(NA_real_, NA_real_)
+    has_nonfinite <- length(vals) > 0 && any(!is.finite(vals))
+    data.frame(
+      layer = nm, ext_ok = ext_ok, dim_ok = dim_ok, crs_ok = crs_ok,
+      min = rng[1], max = rng[2], has_nonfinite = has_nonfinite
+    )
+  })
+  out <- do.call(rbind, results)
+  bad <- out[!(out$ext_ok & out$dim_ok & out$crs_ok) | out$has_nonfinite, ]
+  if (nrow(bad) > 0) {
+    warning("[QA] Grid-alignment/finite-value issues found:")
+    print(bad)
+  } else {
+    message(sprintf("[QA] All %d connectivity layers share the master grid's geometry with finite values.", nrow(out)))
+  }
+  out
+}

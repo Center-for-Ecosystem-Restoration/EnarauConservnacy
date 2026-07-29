@@ -7,3 +7,5 @@ outputs/
 dist/
 *.md
 *.tif
+.RHistory
+.RData

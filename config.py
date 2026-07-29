@@ -36,6 +36,34 @@ AOI_PATHS = {
     "phase_2_corridor": DATA_DIR / "phase_2_corridor.geojson",
 }
 
+#################### CONNECTIVITY RAW INPUTS (Objective 4) ##########################
+# Authoritative copies of Objective 4's raw GIS inputs, same "not re-exported from Earth Engine"
+# treatment as AOI_PATHS above -- these are hand-produced/QGIS deliverables, not regenerable
+# pipeline outputs, so they live in data/ rather than the gitignored outputs/ dir.
+#
+# CRS FIX (2026-07-29): roads.gpkg/streams.gpkg/settlements.gpkg/settlement_heatmap.tif all
+# arrived tagged EPSG:32737 (UTM zone 37S) -- the wrong UTM zone for this AOI (~35.3°E, zone 36),
+# NOT the EPSG:32637/hemisphere issue already fixed for Objective 1 (see PROJECT_CRS note below) --
+# a different mistake that happens to rhyme with it. Confirmed geographically real (not corrupt):
+# the mistagged files' easting values (~83k-96k) are exactly what the AOI's real coordinates
+# (~750k-764k in the correct zone 36S) transform to under zone 37S's false-easting reference,
+# consistent with the source QGIS project simply being set to the wrong UTM zone at export time.
+# All four files were reprojected in place to PROJECT_CRS (EPSG:32736) -- elevation.tif/slope.tif/
+# condition_score_*.tif were already correct and untouched. If this repo ever receives a fresh
+# export of these four layers, re-check their CRS before trusting it -- don't assume the fix
+# persists across a re-export from the same QGIS project.
+CONNECTIVITY_INPUT_PATHS = {
+    "roads": DATA_DIR / "roads.gpkg",
+    "streams": DATA_DIR / "streams.gpkg",
+    "settlements": DATA_DIR / "settlements.gpkg",
+    "elevation": DATA_DIR / "elevation.tif",
+    "slope": DATA_DIR / "slope.tif",
+    "settlement_heatmap": DATA_DIR / "settlement_heatmap.tif",
+    "condition_score_wet": DATA_DIR / "condition_score_wet_2022_2025_project.tif",
+    "condition_score_dry": DATA_DIR / "condition_score_dry_2022_2025_project.tif",
+    "condition_score_current": DATA_DIR / "condition_score_current_2022_2025_project.tif",
+}
+
 #################### SITE METADATA ##########################
 SITES = [
     {
