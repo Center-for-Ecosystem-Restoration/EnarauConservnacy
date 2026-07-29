@@ -1,15 +1,13 @@
 # Generic scoring helpers shared across objectives: GLOBAL normalization across all patches/pixels
-# pooled together, not per-site -- appropriate since the goal is cross-site prioritization (which
-# patches/cells matter most for the whole network), not a within-site ranking. Per-site
-# normalization would make each site's single largest patch always score 1.0 locally regardless
-# of true landscape-scale importance.
+# pooled together, not per-site -- appropriate since the goal is cross-site prioritization, not a
+# within-site ranking. Per-site normalization would make each site's single largest patch always
+# score 1.0 locally regardless of true landscape-scale importance.
 #
 # This file used to also hold compute_patch_importance_score() and compute_linkage_priority_score()
-# (Objective 3's Euclidean patch-graph-derived scores). Both were removed 2026-07-29 along with the
-# rest of that workflow -- see R/patch_graph.R's header comment for why (superseded by Objective
-# 4's real Circuitscape/Omniscape current-flow analysis, scripts/r/06-11_*.R). normalize01() and
-# distance_decay_score() below are unaffected -- both are generic and reused by Objective 4's
-# R/consensus.R (patch protection/restoration importance scores).
+# (Objective 3's Euclidean patch-graph-derived scores), removed 2026-07-29 along with the rest of
+# that workflow (superseded by Objective 4's Circuitscape/Omniscape analysis, scripts/r/06-11_*.R).
+# normalize01() and distance_decay_score() below are unaffected -- both are reused by Objective 4's
+# R/consensus.R.
 
 #' Min-max normalize to [0, 1]. NA-safe (ignores NA in range calc; propagates NA through).
 normalize01 <- function(x) {

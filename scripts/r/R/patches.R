@@ -1,16 +1,14 @@
-# Objective 4's own habitat-patch/focal-node logic (plan Sec.10). Patch DELINEATION reuses
-# R/patch_graph.R's generic functions unchanged (delineate_patches, calculate_patch_metrics,
-# calculate_patch_nearest_neighbor, attribute_patches_to_sites all operate on any binary-natural
-# raster/patch polygon regardless of source) -- only the core-habitat mask, per-patch attribute
-# extraction, tiering, and focal-node selection are new here, since Objective 4 rebuilds patches
-# from the NEW land-cover classification rather than reusing Objective 3's Dynamic-World-based
-# ones (plan's own resolution of that open question). No igraph patch-graph is built for Objective
-# 4 -- see R/patch_graph.R's header comment on why that Euclidean-distance approach was removed
-# entirely (superseded by this objective's own real current-flow analysis, not reused by it).
+# Objective 4's own habitat-patch/focal-node logic. Patch DELINEATION reuses R/patch_graph.R's
+# generic functions unchanged (delineate_patches, calculate_patch_metrics,
+# calculate_patch_nearest_neighbor, attribute_patches_to_sites) -- only the core-habitat mask,
+# per-patch attribute extraction, tiering, and focal-node selection are new here, since Objective 4
+# rebuilds patches from the new land-cover classification rather than reusing Objective 3's
+# Dynamic-World-based ones. No igraph patch-graph is built here -- see R/patch_graph.R's header
+# comment on why that Euclidean-distance approach was removed (superseded by Objective 4's own
+# current-flow analysis).
 
-#' Binary core-habitat raster (1/0/NA) per plan Sec.10.1: natural_fraction >= 0.70 AND
-#' landcover_permeability >= 0.70 AND settlement_pressure <= 0.25. All three inputs must already
-#' share the master grid.
+#' Binary core-habitat raster (1/0/NA): natural_fraction >= 0.70 AND landcover_permeability >=
+#' 0.70 AND settlement_pressure <= 0.25. All three inputs must already share the master grid.
 build_core_habitat_mask <- function(natural_fraction, landcover_permeability, settlement_pressure) {
   crit <- CORE_HABITAT_CRITERIA
   out <- (natural_fraction >= crit$natural_fraction_min) &
@@ -30,8 +28,8 @@ mean_within_patches <- function(patch_poly, r, band_name) {
   out
 }
 
-#' Assign each patch a size tier (plan Sec.10.3) from its area_ha. Patches below tier3_min are
-#' "untiered" -- retained in the patch table but not eligible as focal-node candidates.
+#' Assign each patch a size tier from its area_ha. Patches below tier3_min are "untiered" --
+#' retained in the patch table but not eligible as focal-node candidates.
 tier_patches <- function(area_ha) {
   t <- PATCH_TIER_THRESHOLDS_HA
   dplyr::case_when(
@@ -42,21 +40,17 @@ tier_patches <- function(area_ha) {
   )
 }
 
-#' Select focal-node candidates (plan Sec.10.4): area_ha >= FOCAL_NODE_MIN_AREA_HA, ranked by
-#' area_ha (descending) within each site group ("external_buffer" for patches outside all 4 named
-#' sites), capped at FOCAL_NODE_TARGET_COUNTS per site (uncapped for external_buffer).
+#' Select focal-node candidates: area_ha >= FOCAL_NODE_MIN_AREA_HA, ranked by area_ha (descending)
+#' within each site group ("external_buffer" for patches outside all 4 named sites), capped at
+#' FOCAL_NODE_TARGET_COUNTS per site (uncapped for external_buffer).
 #'
-#' GUARANTEED MINIMUM (added 2026-07-29, real finding not anticipated by the plan): a strict
-#' area_ha >= 20 cutoff leaves Corridor Phase 2 with ZERO focal nodes -- its only delineated patch
-#' at all is 10.17 ha (tier3), below the cutoff -- and Corridor Phase 1 with only one (22.86 ha,
-#' barely above it). Both corridor phases are exactly the linkage the whole objective exists to
-#' test (plan Sec.10.5's own priority linkage list requires a Corridor Phase 1/2 endpoint), so
-#' `require_min_one_per_named_site = TRUE` (default) falls back to each named SITES$site_id's
-#' single largest patch (regardless of area/tier) when that site has zero candidates clearing
-#' min_area_ha -- never for "external_buffer", which has no linkage requirement. This is a
-#' fragmentation finding worth reporting on its own terms (the corridor phases are far more
-#' fragmented than Enarau/Mbokishi), not something to paper over by lowering the area threshold
-#' project-wide.
+#' GUARANTEED MINIMUM: a strict area_ha >= 20 cutoff leaves Corridor Phase 2 with ZERO focal
+#' nodes (its only patch is 10.17 ha) and Corridor Phase 1 with only one (22.86 ha). Both corridor
+#' phases need at least one focal node as a linkage endpoint, so
+#' `require_min_one_per_named_site = TRUE` (default) falls back to each named site's single
+#' largest patch when it has zero candidates clearing min_area_ha -- never for "external_buffer".
+#' This is a real fragmentation finding worth reporting on its own terms, not something to paper
+#' over by lowering the area threshold project-wide.
 #' @param patch_table Must have columns patch_id, area_ha, primary_site_id (NA -> "external_buffer").
 select_focal_nodes <- function(patch_table, min_area_ha = FOCAL_NODE_MIN_AREA_HA,
                                 target_counts = FOCAL_NODE_TARGET_COUNTS,

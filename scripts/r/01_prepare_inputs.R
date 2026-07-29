@@ -1,13 +1,10 @@
 # Step 1: pre-processing checks + derived-raster prep.
 #
-# RUN AS: cd scripts/r && Rscript 01_prepare_inputs.R
-# (NOT `Rscript scripts/r/01_prepare_inputs.R` from the repo root -- renv only activates when
-# the working directory is scripts/r/ itself. See 00_config.R's header comment.)
+# RUN AS: cd scripts/r && Rscript 01_prepare_inputs.R (see 00_config.R for the renv/cwd note).
 #
-# Requires the historical_change_detection.ipynb rasters to be manually downloaded from Google
-# Drive folder into outputs/rasters/dynamic_world/ first. If only
-# a partial download is present, this script still runs (STRICT_INPUT_CHECK = FALSE below) and
-# reports what's missing rather than hard-failing.
+# Requires the historical_change_detection.ipynb rasters already downloaded from Drive into
+# outputs/rasters/dynamic_world/. STRICT_INPUT_CHECK below defaults to TRUE (hard-fails on any
+# missing file); set FALSE to instead warn and continue against a partial download.
 
 source("00_config.R")
 source("R/io.R")
@@ -33,8 +30,7 @@ if (file.exists(current_class_path)) {
   current_class_r <- read_habitat_raster(current_class_path)
   check_result <- landscapemetrics::check_landscape(recode_full_habitat(current_class_r))
   print(check_result)
-  # check_landscape()'s OK column is a display glyph not bool
-  # -- compare by codepoint rather than treating it as TRUE/FALSE or risking a
+  # OK column is a display glyph, not a bool -- compare by codepoint to avoid a
   # source-encoding mismatch on the literal glyph.
   if (!all(vapply(check_result$OK, utf8ToInt, integer(1)) == 10004L)) {
     warning("landscapemetrics::check_landscape() flagged issues -- review before trusting downstream metrics.")
@@ -72,10 +68,9 @@ if (nrow(period_available) > 0) {
   message("=== Valid-pixel coverage QA: period composites (", nrow(period_available), "/", nrow(period_manifest), " available) ===")
   period_available_renamed <- period_available
   names(period_available_renamed)[names(period_available_renamed) == "class_file"] <- "habitat_class_file"
-  # id_cols = "period" so this table's ID column matches what 03/04/06 look up by --
-  # values are still the 5 DW_PERIOD_TOKENS-style tokens (baseline_2016_2018 etc.), a different
-  # value domain than Objective 1's own 3-valued "period" column in dw_area_by_class_by_site_period.csv
-  # (consumed separately in 02) -- don't join those two tables on this column name without checking.
+  # id_cols = "period" matches what 03/04/06 look up by. Values are the 5 DW_PERIOD_TOKENS-style
+  # tokens, a different domain than the 3-valued "period" column in dw_area_by_class_by_site_period.csv
+  # (consumed separately in 02) -- don't join the two tables on this column name without checking.
   names(period_available_renamed)[names(period_available_renamed) == "token"] <- "period"
   coverage_period <- compute_valid_coverage_table(period_available_renamed, id_cols = "period")
   readr::write_csv(coverage_period, file.path(TABLES_DIR, "landscape_valid_pixel_coverage_by_site_period.csv"))

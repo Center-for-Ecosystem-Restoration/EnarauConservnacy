@@ -1,11 +1,11 @@
-# Land-cover permeability/confidence, resistance Models A/B/C, and source-strength surfaces
-# (plan Sec.6-8). Consumes the aligned 30m layers step 06 (06_prepare_connectivity_inputs.R)
-# already wrote to CONNECTIVITY_RASTER_DIR -- nothing here reads a raw input directly.
+# Land-cover permeability/confidence, resistance Models A/B/C, and source-strength surfaces.
+# Requires 06_prepare_connectivity_inputs.R to have already run -- consumes the aligned 30m
+# layers it writes to CONNECTIVITY_RASTER_DIR; nothing here reads a raw input directly.
 
 #' Weighted sum of a class_fraction_stack()'s per-class bands against a named lookup of
 #' class-name -> value (e.g. LANDCOVER_PERMEABILITY) -- the shared pattern behind both
-#' landcover_permeability() and landcover_confidence() (plan Sec.6.2's
-#' "sum(class_fraction_i * class_value_i)" formula).
+#' landcover_permeability() and landcover_confidence()
+#' (sum(class_fraction_i * class_value_i)).
 weighted_class_layer <- function(fraction_stack, values) {
   class_names <- names(values)
   band_names <- paste0(class_names, "_fraction")
@@ -17,7 +17,7 @@ weighted_class_layer <- function(fraction_stack, values) {
   Reduce(`+`, layers)
 }
 
-#' Fraction-weighted land-cover permeability (plan Sec.6.2), from LANDCOVER_PERMEABILITY.
+#' Fraction-weighted land-cover permeability, from LANDCOVER_PERMEABILITY.
 landcover_permeability <- function(fraction_stack) {
   out <- weighted_class_layer(fraction_stack, LANDCOVER_PERMEABILITY)
   names(out) <- "landcover_permeability"
@@ -41,15 +41,15 @@ build_landcover_confidence_crosswalk <- function(accuracy_path = RF_ACCURACY_PIX
   out
 }
 
-#' Fraction-weighted land-cover classification confidence (plan Sec.5.2), from a crosswalk built
-#' by build_landcover_confidence_crosswalk().
+#' Fraction-weighted land-cover classification confidence, from a crosswalk built by
+#' build_landcover_confidence_crosswalk().
 landcover_confidence <- function(fraction_stack, confidence_crosswalk) {
   out <- weighted_class_layer(fraction_stack, confidence_crosswalk)
   names(out) <- "landcover_confidence"
   out
 }
 
-#' permeability -> resistance (plan Sec.7.5): 1 + (rmax - 1) * (1 - permeability)^gamma.
+#' permeability -> resistance: 1 + (rmax - 1) * (1 - permeability)^gamma.
 #' gamma = 1 (linear) is the production default; higher gamma is a sensitivity-test variant only.
 to_resistance <- function(permeability, rmax, gamma = 1) {
   permeability <- clamp01(permeability)
@@ -57,8 +57,8 @@ to_resistance <- function(permeability, rmax, gamma = 1) {
 }
 
 #' Build Resistance Models A (land-cover baseline), B (+ human/road pressure), and C (+
-#' condition/terrain/riparian) as a named 3-band SpatRaster (plan Sec.7.1-7.3). All inputs must
-#' already share the master grid.
+#' condition/terrain/riparian) as a named 3-band SpatRaster. All inputs must already share the
+#' master grid.
 #' @param landcover_perm,human_perm,road_perm,condition,terrain_perm,riparian_factor,built_fraction
 #'   Aligned 30m SpatRaster layers (human_perm = 1-settlement_pressure, road_perm =
 #'   1-road_pressure, terrain_perm = 1-slope_scaled, riparian_factor = neutral or facilitation
@@ -91,7 +91,7 @@ build_resistance_models <- function(landcover_perm, human_perm, road_perm, condi
 }
 
 #' Neutral (constant 0.50) or facilitation (0.50 outside / RIPARIAN_FACTOR_FACILITATION where
-#' riparian_natural_cover==1) riparian-factor scenario raster (plan Sec.7.3).
+#' riparian_natural_cover==1) riparian-factor scenario raster.
 riparian_factor_scenario <- function(riparian_natural_cover, scenario = c("neutral", "facilitation")) {
   scenario <- match.arg(scenario)
   if (scenario == "neutral") {
@@ -103,7 +103,7 @@ riparian_factor_scenario <- function(riparian_natural_cover, scenario = c("neutr
   out
 }
 
-#' Primary + conservative source-strength rasters (plan Sec.8.1-8.2).
+#' Primary + conservative source-strength rasters.
 #' @param natural_fraction,condition,human_perm,built_fraction,settlement_pressure,road_pressure
 #'   Aligned 30m SpatRaster layers.
 build_source_strength <- function(natural_fraction, condition, human_perm, built_fraction,

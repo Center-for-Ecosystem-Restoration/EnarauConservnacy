@@ -1,5 +1,5 @@
 # Step 11 (Objective 4): consensus mapping, bottleneck/barrier candidates, protection/restoration
-# priority, and patch-level importance scores (plan Sec.11-12).
+# priority, and patch-level importance scores.
 #
 # RUN AS: cd scripts/r && Rscript 11_consensus_priority_mapping.R
 #
@@ -101,18 +101,17 @@ message("=== Patch-level importance scores ===")
 patch_table <- readr::read_csv(file.path(TABLES_DIR, "connectivity_patch_metrics_current.csv"), show_col_types = FALSE)
 patch_poly <- terra::vect(sf::st_read(file.path(VECTORS_DIR, "connectivity_habitat_patches_current.gpkg"), quiet = TRUE)[, "patch_id"])
 
-# mean/max Omniscape normalized_current per patch, across all 6 scenarios (fills in the
-# mean_omniscape_current/max_omniscape_current columns step 08 deliberately left for this step).
+# mean/max Omniscape normalized_current per patch across all 6 scenarios; fills in columns step
+# 08 left blank for this step.
 omniscape_patch_stats <- Reduce(function(a, b) dplyr::left_join(a, b, by = "patch_id"), lapply(scenario_labels, function(lbl) {
   patch_current_stats(patch_poly, normalized_current_list[[lbl]], paste0("omniscape_current_", lbl))
 }))
-# Reference-scenario columns get the plan's own plain names (Sec.10.2); per-scenario detail kept too.
+# Reference-scenario columns also get plain (non-suffixed) names; per-scenario detail is kept too.
 omniscape_patch_stats$mean_omniscape_current <- omniscape_patch_stats[[paste0("mean_omniscape_current_", PRIORITY_REFERENCE_SCENARIO)]]
 omniscape_patch_stats$max_omniscape_current <- omniscape_patch_stats[[paste0("max_omniscape_current_", PRIORITY_REFERENCE_SCENARIO)]]
 
-# Circuitscape all-to-one cumulative current per patch -- the plan's stepping-stone-position proxy
-# (see R/consensus.R's compute_protection_importance() docs for why this replaces a Euclidean
-# betweenness score here).
+# Circuitscape all-to-one cumulative current per patch is the stepping-stone-position proxy (see
+# R/consensus.R's compute_protection_importance() for why this replaces Euclidean betweenness).
 all_to_one_current <- terra::rast(file.path(CONNECTIVITY_OUTPUT_DIR, "circuitscape", "all_to_one", "cs_all_to_one_cum_curmap.tif"))
 stepping_stone_stats <- patch_current_stats(patch_poly, all_to_one_current, "all_to_one_current")
 
@@ -120,9 +119,8 @@ patch_table <- patch_table |>
   dplyr::left_join(omniscape_patch_stats, by = "patch_id") |>
   dplyr::left_join(stepping_stone_stats, by = "patch_id")
 
-# proximity_to_focal_linkage: linear decay from the corridor phases specifically (plan's
-# restoration-importance component -- proximity to the linkage this whole objective targets),
-# reusing R/scoring.R's distance_decay_score() and config's own CORRIDOR_PROXIMITY_DECAY_M.
+# proximity_to_focal_linkage: linear decay from the corridor phases (this objective's target
+# linkage), via R/scoring.R's distance_decay_score() and CORRIDOR_PROXIMITY_DECAY_M.
 corridor_sites <- do.call(rbind, lapply(c("corridor_p1", "corridor_p2"), function(sid) {
   b <- read_site_boundary(sid)
   sf::st_sf(site_id = sid, geometry = sf::st_geometry(sf::st_union(b)))

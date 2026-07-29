@@ -1,31 +1,23 @@
 # Patch delineation and patch-level metrics. Runs on the full project-extent binary
-# natural-habitat raster (see masking-order rule in 00_config.R/plan) -- a corridor patch spanning
-# two sites must not be truncated.
+# natural-habitat raster, before any per-site clipping -- a corridor patch spanning two sites
+# must not be truncated.
 #
-# The igraph Euclidean-distance patch-graph connectivity screen this file used to also contain
-# (build_patch_graph(), mean_pressure_around_patches()) was removed 2026-07-29: it was always
-# documented as "a structural approximation" standing in for real resistance-based connectivity
-# (see wiki [[circuit-theory-connectivity]]) until Objective 4's Circuitscape/Omniscape analysis
-# existed. That analysis is now built (scripts/r/06-11_*.R) and supersedes it, so the Euclidean
-# graph and its dependent linkage_priority_score synthesis (formerly in
-# 05_patch_importance_graph.R and part of 06_figures_and_exports.R) were deleted rather than kept
-# alongside a better answer to the same question. delineate_patches()/calculate_patch_metrics()/
-# calculate_patch_nearest_neighbor()/attribute_patches_to_sites() below are unaffected -- they're
-# generic patch-delineation utilities reused by both Objective 3 (03/04_*.R) and Objective 4
-# (08_habitat_patches_focal_nodes.R).
+# This file used to also contain an igraph Euclidean-distance patch-graph connectivity screen
+# (build_patch_graph(), mean_pressure_around_patches()), removed 2026-07-29: it was a structural
+# approximation for real resistance-based connectivity, now superseded by Objective 4's
+# Circuitscape/Omniscape analysis (scripts/r/06-11_*.R), so it and its dependent
+# linkage_priority_score synthesis were deleted rather than kept alongside a better answer.
+# delineate_patches()/calculate_patch_metrics()/calculate_patch_nearest_neighbor()/
+# attribute_patches_to_sites() below are unaffected -- generic utilities reused by Objectives 3 and 4.
 
 #' Delineate patches from a binary natural-habitat raster (1 = natural, 0 = converted, NA =
 #' excluded), filter to >= MIN_PATCH_AREA_HA, and return both the cleaned patch-ID raster and its
 #' dissolved polygons.
 #'
-#' zeroAsNA = TRUE is required here: without it, terra::patches() also delineates "patches" out
-#' of the 0 (converted/non-natural) background, which would corrupt both the area filter and the
-#' patch_id numbering. With zeroAsNA = TRUE, only class-1 (natural) cells receive patch IDs --
-#' the same connected-component labeling landscapemetrics::calculate_lsm(level="patch") uses
-#' internally for this class, on the same directions=8 setting, so the resulting patch_id values
-#' are expected to align with calculate_patch_metrics()'s own `id` column. This is verified via a
-#' patch-count cross-check in each caller (e.g. 08_habitat_patches_focal_nodes.R) rather than
-#' assumed silently.
+#' zeroAsNA = TRUE is required: without it, terra::patches() also delineates "patches" out of the
+#' 0 background, corrupting the area filter and ID numbering. With it, only class-1 cells get
+#' patch IDs, matching the connected-component labeling calculate_lsm(level="patch") uses
+#' internally (verified via a patch-count cross-check in each caller).
 delineate_patches <- function(r_bin_natural) {
   patch_id <- terra::patches(r_bin_natural, directions = 8, zeroAsNA = TRUE)
   pixel_area_ha <- prod(terra::res(patch_id)) / 10000
@@ -47,18 +39,14 @@ delineate_patches <- function(r_bin_natural) {
 #' Patch-level AREA/CORE/SHAPE metrics, computed WITHOUT relying on
 #' landscapemetrics::calculate_lsm(level="patch")'s own internal patch-ID numbering.
 #'
-#' Empirically confirmed 2026-07-15: calculate_lsm(level="patch")'s `id` column does NOT match
-#' terra::patches()'s patch IDs (0 of 271 IDs overlapped in a real test) -- the two use different
-#' internal labeling schemes despite both nominally using connected-component labeling with the
-#' same `directions`. Rather than reconcile two independent, non-matching ID schemes, this
-#' function treats the ALREADY-DELINEATED `patch_id_raster` (from delineate_patches(), whose IDs
-#' this project controls and uses for the graph/polygons) as a multi-class categorical raster --
-#' one "class" per patch. Since each class then contains exactly one connected patch by
-#' construction, class-level metrics (lsm_c_ca = total class area, lsm_c_core_mn/lsm_c_shape_mn =
-#' mean core-area/shape-index across patches in that class) equal that single patch's own
-#' area/core-area/shape-index -- with the join to `patch_id` now exact by construction (class ==
-#' patch_id), not assumed. ENN is NOT available this way (a class-level nearest-neighbor metric
-#' needs >1 patch per class) -- see calculate_patch_nearest_neighbor() below instead.
+#' calculate_lsm(level="patch")'s `id` column does NOT match terra::patches()'s patch IDs (zero
+#' overlap in testing) despite both using connected-component labeling with the same `directions`.
+#' Rather than reconcile two non-matching ID schemes, this treats the already-delineated
+#' `patch_id_raster` (whose IDs this project controls) as a multi-class categorical raster -- one
+#' "class" per patch -- so class-level metrics (lsm_c_ca, lsm_c_core_mn, lsm_c_shape_mn) equal
+#' that single patch's own area/core-area/shape-index, with the join to `patch_id` exact by
+#' construction. ENN is NOT available this way (needs >1 patch per class) -- see
+#' calculate_patch_nearest_neighbor() instead.
 #' @param patch_id_raster The `patch_id_raster` returned by delineate_patches() (already filtered
 #'   to >= MIN_PATCH_AREA_HA).
 calculate_patch_metrics <- function(patch_id_raster) {

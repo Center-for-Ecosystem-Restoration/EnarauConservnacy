@@ -1,11 +1,9 @@
-# Objective 3, step 2: area/transition summaries.
+# Step 2: area/transition summaries.
 #
 # RUN AS: cd scripts/r && Rscript 02_area_transition_summaries.R
 #
-# Reads EXISTING zonal-statistics CSVs (already computed server-side in GEE,
-# independent of which rasters were exported) rather than recomputing area-by-class from raw
-# rasters -- these CSVs already cover annual/seasonal AND period-level area-by-class, plus
-# transition areas. No raster reads in this script.
+# Reads existing zonal-statistics CSVs (computed server-side in GEE) rather than recomputing
+# area-by-class from raw rasters -- no raster reads in this script.
 
 source("00_config.R")
 
@@ -50,8 +48,8 @@ natural_area_by_period <- area_period_tidy |>
   dplyr::group_by(site_id, site_name, period) |>
   dplyr::summarise(natural_area_ha = sum(area_ha), .groups = "drop")
 
-# site_area_ha needs the actual reprojected boundary areas (source geojsons are WGS84 lon/lat,
-# so this must reproject, not read raw coordinate extents).
+# site_area_ha needs reprojected boundary areas -- source geojsons are WGS84 lon/lat, so this
+# must reproject rather than read raw coordinate extents.
 site_areas_ha <- vapply(SITES$site_id, function(sid) {
   as.numeric(sum(sf::st_area(sf::st_transform(sf::st_read(SITES$path[SITES$site_id == sid], quiet = TRUE), PROJECT_CRS)))) / 10000
 }, numeric(1))
@@ -68,7 +66,7 @@ net_natural_change <- natural_area_by_period |>
 
 readr::write_csv(net_natural_change, file.path(TABLES_DIR, "landscape_net_natural_change_by_site.csv"))
 
-# ---- Transition grouping (source doc Sec.9.2) ----
+# ---- Transition grouping ----
 transition_groups <- list(
   stable_natural       = c(11, 12, 13, 21, 22, 23, 31, 32, 33),
   natural_to_cropland  = c(14, 24, 34),
@@ -77,8 +75,7 @@ transition_groups <- list(
   pressure_to_natural  = c(41, 42, 43, 51, 52, 53, 61, 62, 63),
   stable_pressure      = c(44, 45, 46, 54, 55, 56, 64, 65, 66)
 )
-# Structural-change sub-flags, not mutually exclusive with stable_natural above  
-# used for woodland/grassland shifts.
+# Structural-change sub-flags (woodland/grassland shifts) -- not mutually exclusive with stable_natural above.
 structural_change_groups <- list(
   woody_to_grass_or_mixed = c(12, 13),
   grass_to_woody_or_mixed = c(21, 23)

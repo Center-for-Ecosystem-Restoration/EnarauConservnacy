@@ -1,13 +1,11 @@
 # Step 07 (Objective 4): land-cover permeability/confidence, resistance Models A/B/C, and
-# source-strength surfaces (plan Sec.6-8).
+# source-strength surfaces. RUN AS: cd scripts/r && Rscript 07_build_resistance_source_surfaces.R
+# (see 00_config.R for the renv/cwd requirement).
 #
-# RUN AS: cd scripts/r && Rscript 07_build_resistance_source_surfaces.R
-# (see 00_config.R's header comment on why -- renv only activates from scripts/r/ as cwd)
-#
-# Requires 06_prepare_connectivity_inputs.R to have already run (reads its outputs from
-# CONNECTIVITY_RASTER_DIR). No fence data exists yet -- Resistance Model D is not built here; only
-# the neutral riparian-factor scenario feeds the default Model C (facilitation scenario is written
-# alongside for later sensitivity testing, plan Sec.14.1, not consumed by default).
+# Requires 06_prepare_connectivity_inputs.R to have already run (reads CONNECTIVITY_RASTER_DIR).
+# No fence data exists yet, so Resistance Model D isn't built here; only the neutral
+# riparian-factor scenario feeds default Model C (facilitation scenario is written alongside for
+# later sensitivity testing, not consumed by default).
 
 source("00_config.R")
 source("R/io.R")

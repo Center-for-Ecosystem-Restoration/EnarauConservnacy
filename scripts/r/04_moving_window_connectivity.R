@@ -2,36 +2,34 @@
 #
 # RUN AS: cd scripts/r && Rscript 04_moving_window_connectivity.R
 #
-# PROJECT-WIDE FIRST, clip only for reporting/figures afterward -- a real corridor pinch-point
-# can straddle a site boundary; masking to site before window_lsm() would truncate it. See the
-# masking-order rule.
+# Runs project-wide first, clips only for reporting/figures afterward -- a real corridor
+# pinch-point can straddle a site boundary, so masking to site before window_lsm() would
+# truncate it.
 #
 # window_lsm() is the single most expensive step in this pipeline (PD requires per-window patch
-# delineation, far more costly than ED/AI's adjacency-count approach or PLAND's focal-mean below).
-# DO NOT run this project-wide/full-radius on a whim -- run the smoke test below first
-# and read off the printed timing estimate before committing to a full run.
+# delineation, far more costly than ED/AI's adjacency-count approach or PLAND's focal-mean
+# below). Run the smoke test below first and check the printed timing before committing to a
+# full run.
 #
 # METRIC NOTE (found 2026-07-28, first real production run): window_lsm() only supports
-# landscape-level ("lsm_l_*") metrics -- it errors outright on class-level names. The originally
-# intended lsm_l_pland/lsm_l_clumpy don't exist at landscape level at all (PLAND/CLUMPY are
-# inherently class-level concepts, see 03/R/metrics.R's calculate_binary_metrics(), which
-# computes them class-level and filters to class==1) -- window_lsm() silently drops unrecognized
-# metric names rather than erroring, so this was never caught until a real (non-smoke-test) run
-# actually tried to use the results. Fixed here: PLAND is computed directly as a
-# terra::focal() mean of the binary raster (mathematically identical to "% of the window's
-# classified area that's natural"); CLUMPY is replaced by lsm_l_ai (Aggregation Index, a valid
-# landscape-level metric) -- 03's own correlation screen found ai correlates >0.85 with
-# clumpy/pland/lpi in this exact landscape's data, so it carries very similar signal here.
+# landscape-level ("lsm_l_*") metrics and errors on class-level names. The originally intended
+# lsm_l_pland/lsm_l_clumpy don't exist at landscape level at all (PLAND/CLUMPY are class-level
+# concepts -- see 03/R/metrics.R's calculate_binary_metrics(), which computes them class-level
+# and filters to class==1). window_lsm() silently drops unrecognized metric names instead of
+# erroring, so this went uncaught until a real (non-smoke-test) run used the results. Fixed here:
+# PLAND is computed as a terra::focal() mean of the binary raster (mathematically identical to
+# "% of the window's classified area that's natural"); CLUMPY is replaced by lsm_l_ai
+# (Aggregation Index, landscape-level) -- 03's correlation screen found ai correlates >0.85 with
+# clumpy/pland/lpi in this landscape's data, so it carries similar signal.
 
 source("00_config.R")
 source("R/io.R")
 source("R/recode.R")
 
-# ---- Smoke-test controls: set SMOKE_TEST_SITE to a site_id to crop to that site + a 150 m
-# buffer before timing a single radius, instead of running the full project extent. Leave NULL
-# for the real production run only after the timing smoke test has been reviewed. ----
-SMOKE_TEST_SITE <- NULL   # set to NULL for the full production run
-SMOKE_TEST_RADII_M <- 500          # single radius to time during the smoke test
+# Smoke-test controls: set SMOKE_TEST_SITE to a site_id to crop + time a single radius before
+# running the full project extent.
+SMOKE_TEST_SITE <- NULL   # NULL for the full production run
+SMOKE_TEST_RADII_M <- 500  # single radius timed during the smoke test
 
 message("=== 04_moving_window_connectivity ===")
 
@@ -63,11 +61,10 @@ if (!is.null(SMOKE_TEST_SITE)) {
 # below. lsm_l_clumpy replaced by lsm_l_ai -- see the METRIC NOTE above.
 window_metrics <- c("lsm_l_ed", "lsm_l_ai", "lsm_l_pd")
 
-#' Odd window size (a defined center pixel) matching the vault plan doc's own 500m->51x51
-#' reference example -- round DOWN to the nearest odd size on the rare radius that comes out
-#' even (currently only 250m: 26 -> 25) rather than up. 500m (51) and 1000m (101) are already odd
-#' and untouched by this. This edge case was never caught by the smoke test, which only ever
-#' exercised the 500m radius.
+#' Odd window size (so there's a defined center pixel) -- rounds DOWN to the nearest odd size on
+#' the rare radius that comes out even (currently only 250m: 26 -> 25), not up. 500m (51) and
+#' 1000m (101) are already odd and untouched. This edge case was never exercised by the smoke
+#' test, which only ever ran the 500m radius.
 compute_win_size <- function(radius_m) {
   win_size <- radius_m %/% 10 + 1
   if (win_size %% 2 == 0) win_size <- win_size - 1
@@ -85,19 +82,17 @@ run_window_lsm_for_period <- function(r_bin, radius_m) {
   elapsed_lsm <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
   # window_lsm() nests its result one level under a per-input-layer key (e.g. "layer_1") even for
-  # a single-layer landscape like ours -- confirmed empirically 2026-07-28 (landscapemetrics
-  # 2.2.1). Unwrap positionally (not by the literal string "layer_1") so downstream code can
-  # index metrics directly by name; this was the second latent bug alongside the metric-name one
-  # above -- the original code's current_windows[["lsm_l_pland"]]-style top-level indexing would
-  # have silently returned NULL regardless of which metrics were requested.
+  # a single-layer landscape like ours (confirmed empirically 2026-07-28, landscapemetrics 2.2.1).
+  # Unwrap positionally, not by the literal string "layer_1", so downstream code can index metrics
+  # by name -- a second latent bug alongside the metric-name one above: top-level indexing like
+  # current_windows[["lsm_l_pland"]] would have silently returned NULL.
   metrics <- raw_result[[1]]
 
   t1 <- Sys.time()
   # PLAND has no landscape-level definition (see the METRIC NOTE above) -- a focal mean of the
   # binary raster is mathematically identical to "% of the window's classified area that's
   # natural" (na.rm=TRUE excludes unclassified pixels from the denominator, matching PLAND's own
-  # "percentage of the valid/classified extent" convention documented in R/metrics.R). Scaled by
-  # 100 to match landscapemetrics' own 0-100 PLAND convention.
+  # convention documented in R/metrics.R). Scaled by 100 to match landscapemetrics' 0-100 range.
   metrics[["lsm_l_pland"]] <- terra::focal(r_bin, w = win, fun = "mean", na.rm = TRUE) * 100
   elapsed_focal <- as.numeric(difftime(Sys.time(), t1, units = "secs"))
 

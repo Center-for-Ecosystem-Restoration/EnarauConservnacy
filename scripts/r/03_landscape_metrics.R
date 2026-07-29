@@ -1,13 +1,13 @@
-# Objective 3, step 3: site-level fragmentation/connectivity metrics (Level 2).
+# Site-level fragmentation/connectivity metrics (Level 2: within-site fragmentation).
 #
 # RUN AS: cd scripts/r && Rscript 03_landscape_metrics.R
 #
-# MASKS TO SITE FIRST (crop + mask each raster to each site polygon before calculate_lsm()) --
-# this is Level 2, answering "what does fragmentation look like within this site." Level 3
-# must NOT follow this pattern -- see the masking-order rule in the plan.
+# Masks to site first (crop + mask each raster to each site polygon before calculate_lsm()) --
+# answers "what does fragmentation look like within this site." Moving-window connectivity (04)
+# masks in the opposite order -- project-wide first, clipped only afterward -- since a corridor
+# pinch-point can straddle a site boundary.
 #
-# Processes only the seasonal/period rasters actually present locally (missing files are skipped
-# with a message, not a hard failure) -- run 01_prepare_inputs.R first to see what's missing.
+# Processes only the seasonal/period rasters present locally; run 01_prepare_inputs.R first.
 
 source("00_config.R")
 source("R/io.R")
@@ -25,8 +25,8 @@ coverage_period <- if (file.exists(coverage_period_path)) readr::read_csv(covera
 site_boundaries <- lapply(SITES$site_id, read_site_boundary)
 names(site_boundaries) <- SITES$site_id
 
-#' Run class + binary + entropy metrics for one habitat_class raster path, across all 4 sites,
-#' excluding any site below the coverage threshold (if a coverage table is supplied).
+#' Runs class + binary + entropy metrics per site for one habitat_class raster, excluding any
+#' site below the coverage threshold when a coverage table is supplied.
 run_metrics_for_raster <- function(habitat_class_path, id_values, coverage_table = NULL) {
   r <- read_habitat_raster(habitat_class_path)
   r_full <- recode_full_habitat(r)
@@ -104,11 +104,9 @@ if (nrow(period_available) > 0) {
   message("No period composite rasters available yet -- skipping period metrics.")
 }
 
-# bind_rows (not rbind) -- seasonal rows carry year/season columns, period rows carry a period
-# column instead; rbind() can't reconcile the mismatched schemas but bind_rows() aligns them and
-# fills the other set's columns with NA, which is exactly what downstream code expects (e.g. the
-# metric-change summary below filters on !is.na(period), which only works if seasonal rows
-# contribute a real (NA) period column rather than the column being entirely absent).
+# bind_rows (not rbind) -- seasonal rows carry year/season columns, period rows carry period
+# instead; bind_rows() fills the other set's columns with NA (rbind() can't reconcile mismatched
+# schemas), which the metric-change summary below relies on via its !is.na(period) filter.
 class_metrics <- dplyr::bind_rows(all_class)
 binary_metrics <- dplyr::bind_rows(all_binary)
 entropy_metrics <- dplyr::bind_rows(all_entropy)

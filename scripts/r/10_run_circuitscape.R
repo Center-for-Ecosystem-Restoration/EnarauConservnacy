@@ -1,21 +1,18 @@
-# Step 10 (Objective 4): Circuitscape pairwise + all-to-one runs on the focal nodes (plan
-# Sec.10.5).
+# Step 10 (Objective 4): Circuitscape pairwise + all-to-one runs on the focal nodes.
 #
 # RUN AS: cd scripts/r && Rscript 10_run_circuitscape.R
 #
-# This script only does the FAST prep work: builds the focal-node point raster and writes the
-# pairwise/all-to-one INI configs. It deliberately does NOT invoke Julia itself -- pairwise mode
-# solves a GLOBAL circuit (not moving-window like Omniscape) once per focal-node pair, and step
-# 09's experience showed even Omniscape's single largest scenario can run well past the calling
-# tool's ability to babysit a blocking call; treat the actual Julia invocation as a separate,
-# explicitly-launched step per config (see the run manifest this script stages), same as
-# 09_run_omniscape.R's individual scenarios ended up needing.
+# Requires 07_build_resistance_source_surfaces.R and 08_habitat_patches_focal_nodes.R to have
+# already run.
 #
-# Uses Resistance Model C (the plan's "recommended production model after validation", Sec.7.6,
-# and the exact choice its own Sec.13.9 R implementation outline makes for both cs_pairwise and
-# cs_all_to_one) -- not a re-run across all three resistance models. Focal-node count is whatever
-# 08_habitat_patches_focal_nodes.R selected (6 as of the 2026-07-29 settlement-heatmap fix, not a
-# fixed number -- don't hardcode an expected pair count here or in downstream reporting).
+# Only does FAST prep here (focal-node point raster + INI configs) -- does NOT invoke Julia.
+# Pairwise mode solves a GLOBAL circuit once per focal-node pair, and per step 09's experience a
+# single scenario can run past what a blocking call should take, so each Julia invocation is
+# launched separately and explicitly (see the run manifest this script stages).
+#
+# Uses Resistance Model C only, not all three models. Focal-node count is whatever
+# 08_habitat_patches_focal_nodes.R selected (6 as of the 2026-07-29 settlement-heatmap fix) --
+# don't hardcode an expected pair count here or downstream.
 
 source("00_config.R")
 source("R/io.R")
@@ -31,7 +28,7 @@ message(nrow(focal_nodes), " focal nodes loaded: ", paste(focal_nodes$patch_id, 
 
 message("=== Building focal-node point raster (patch_id as the Circuitscape point ID) ===")
 # st_point_on_surface() guarantees a point INSIDE the polygon (unlike a centroid, which can fall
-# outside an irregular/concave patch) -- same choice the plan's own Sec.13.8 R outline makes.
+# outside an irregular/concave patch).
 focal_points <- sf::st_point_on_surface(focal_nodes)
 points_raster <- terra::rasterize(terra::vect(focal_points), master_grid, field = "patch_id")
 names(points_raster) <- "focal_node_id"

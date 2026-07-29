@@ -1,13 +1,10 @@
-# Valid-pixel-coverage QA: a site-year with only ~55% valid pixel
-# coverage produced artificial patch breaks that inflated NP/PD/ED. No standalone valid_obs_count
-# raster exists per-year/seasonal (only inside the 9-band period stacks) -- masking already
-# happened upstream at classification time (Objective 1's min-observation/top1_prob gates), so the
-# NA fraction on the habitat_class raster itself IS the QA signal; no separate QA band needed.
+# Valid-pixel-coverage QA: a site-year with only ~55% valid pixel coverage produced artificial
+# patch breaks that inflated NP/PD/ED. No standalone valid_obs_count raster exists per-year --
+# the NA fraction on habitat_class itself is the QA signal.
 
 #' Compute valid-pixel coverage for one habitat_class raster, restricted to one site's polygon.
-#' Uses read_habitat_raster() (not bare terra::rast()) so literal 0 ("no classification /
-#' outside AOI", see that function's docs) is correctly counted as invalid, not valid -- reading
-#' the raw file directly here would silently overcount coverage.
+#' Uses read_habitat_raster() so literal 0 ("no classification/outside AOI") counts as invalid,
+#' not valid.
 #' @param habitat_class_path Path to a habitat_class GeoTIFF.
 #' @param site_vect A terra SpatVector (or sf object) of the site boundary, already in PROJECT_CRS.
 compute_valid_coverage <- function(habitat_class_path, site_vect) {
@@ -25,8 +22,7 @@ compute_valid_coverage <- function(habitat_class_path, site_vect) {
   )
 }
 
-#' Run compute_valid_coverage() across every (site x year x season) row of a manifest data.frame
-#' (expects a `habitat_class_file` column plus identifying columns to carry through).
+#' Run compute_valid_coverage() across every (site x year x season) row of a manifest data.frame.
 compute_valid_coverage_table <- function(manifest, id_cols) {
   rows <- lapply(seq_len(nrow(manifest)), function(i) {
     site_ids <- SITES$site_id
@@ -61,10 +57,9 @@ report_excluded_rows <- function(coverage_table, context_label) {
   invisible(excluded)
 }
 
-#' Objective 4 grid-alignment QA: verify every raster in `rasters` (a named list) shares the
-#' master grid's exact CRS/extent/dims, and report each raster's finite-value range. Doesn't
-#' enforce any particular range itself (callers interpret per-layer) -- just surfaces NaN/Inf and
-#' geometry drift loudly, same "never a silent pass" spirit as report_excluded_rows() above.
+#' Objective 4 grid-alignment QA: verify every raster in `rasters` shares the master grid's exact
+#' CRS/extent/dims, and report each raster's finite-value range. Never fails silently -- surfaces
+#' NaN/Inf and geometry drift as a warning.
 check_connectivity_grid_alignment <- function(rasters, master_grid) {
   ref_ext <- as.vector(terra::ext(master_grid))
   ref_dim <- dim(master_grid)[1:2]

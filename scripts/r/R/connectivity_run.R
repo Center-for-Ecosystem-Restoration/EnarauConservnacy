@@ -13,15 +13,15 @@ to_unix_path <- function(path) gsub("\\\\", "/", path)
 #' Python-configparser-style capitalized booleans (confirmed via the 2026-07-29 smoke test).
 ini_bool <- function(x) if (isTRUE(x)) "True" else "False"
 
-#' Write an Omniscape.jl INI config file (plan Sec.9, keys per Omniscape.jl's documented options).
+#' Write an Omniscape.jl INI config file (keys per Omniscape.jl's documented options).
 #'
 #' `project_dir` (Omniscape's own `project_name`) must NOT already exist when the run starts --
-#' confirmed 2026-07-29 that Omniscape.jl silently auto-increments to a numbered sibling
-#' (`project_1`, `project_2`, ...) instead of reusing/overwriting an existing directory, which
-#' silently orphans results if this function's caller has already created that same directory
-#' (e.g. to hold input rasters). Keep input rasters in a SEPARATE directory from `project_dir` --
-#' see 09_run_omniscape.R's `inputs/`/`output/` split -- and treat `project_dir`'s existence as
-#' this scenario's own "already run" signal for idempotent re-runs.
+#' Omniscape.jl silently auto-increments to a numbered sibling (`project_1`, `project_2`, ...)
+#' instead of reusing/overwriting an existing directory, silently orphaning results if the caller
+#' already created that same directory (e.g. to hold input rasters). Keep input rasters in a
+#' SEPARATE directory from `project_dir` -- see 09_run_omniscape.R's `inputs/`/`output/` split --
+#' and treat `project_dir`'s existence as this scenario's own "already run" signal for idempotent
+#' re-runs.
 #' @return The config file path (invisibly).
 write_omniscape_config <- function(resistance_path, source_path, radius_cells, project_dir,
                                     config_path,
@@ -62,9 +62,8 @@ write_omniscape_config <- function(resistance_path, source_path, radius_cells, p
   invisible(config_path)
 }
 
-#' Write a Circuitscape.jl INI config file (plan Sec.10.5/13.9, keys per Circuitscape.jl's
-#' documented options). `scenario` is "pairwise" or "all-to-one" (Circuitscape.jl's own term for
-#' what the plan calls "all-to-one" mode).
+#' Write a Circuitscape.jl INI config file (keys per Circuitscape.jl's documented options).
+#' `scenario` is "pairwise" or "all-to-one" (Circuitscape.jl's own terms).
 #' @return The config file path (invisibly).
 write_circuitscape_config <- function(habitat_path, point_path, output_base,
                                        scenario = c("pairwise", "all-to-one"),

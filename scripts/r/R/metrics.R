@@ -1,21 +1,16 @@
 # calculate_lsm() wrappers, correlation screen, and the entropy-metric pilot check
-# (Nowosad & Stepinski 2019 -- lsm_l_ent/lsm_l_mutinf as a cheap, weakly-correlated complexity
-# axis, per the vault plan doc's open question).
+# (Nowosad & Stepinski 2019 -- lsm_l_ent/lsm_l_mutinf as a cheap, weakly-correlated complexity axis).
 #
-# IMPORTANT interpretation note (confirmed empirically 2026-07-15): PLAND/ED/AI/etc. are
-# percentages of the VALID (classified, non-NA) landscape extent within each site crop, not of
-# the site's full nominal polygon area. Roughly 15% of Enarau's own polygon has no valid
-# classification at all (cross-checked against Objective 1's own dw_area_by_class_by_site_period
-# .csv: summing habitat_area_ha_1..8 gives ~982 ha against a 1161 ha polygon). This means a
-# PLAND of e.g. 89% for Enarau means "89% of the CLASSIFIED area is natural," not "89% of Enarau."
-# 01_prepare_inputs.R's valid-pixel-coverage table gives the classified/polygon ratio needed to
-# reconcile the two -- always report both when quoting a PLAND-style percentage in the final
-# deliverable.
+# IMPORTANT: PLAND/ED/AI/etc. are percentages of the VALID (classified, non-NA) landscape extent
+# within each site crop, not of the site's full nominal polygon area -- roughly 15% of Enarau's
+# polygon has no valid classification at all (~982 ha classified vs. 1161 ha polygon). A PLAND of
+# 89% for Enarau means "89% of the CLASSIFIED area," not "89% of Enarau." Always report both
+# figures (01_prepare_inputs.R's valid-pixel-coverage table gives the classified/polygon ratio).
 
 #' Mask a project-wide raster to one site's polygon (crop + mask). Used by 03 (Level 2), which
-#' masks to site BEFORE computing metrics -- do NOT reuse this for Level 3 (04/05), which must
-#' compute on the full project extent first and clip only for reporting (see plan's masking-order
-#' rule: a real patch/pinch-point can straddle a site boundary).
+#' masks to site BEFORE computing metrics -- do NOT reuse for Level 3 (04/05), which computes on
+#' the full project extent first and clips only for reporting, since a patch/pinch-point can
+#' straddle a site boundary.
 mask_to_site <- function(r, site_vect) {
   if (inherits(site_vect, "sf")) site_vect <- terra::vect(site_vect)
   r_crop <- terra::crop(r, site_vect)
@@ -53,10 +48,9 @@ calculate_entropy_pilot <- function(r_site) {
   )
 }
 
-#' Pivot a long metrics table (columns: site_id, ..., metric, value) to wide (one column per
-#' metric) and flag |r| > CORRELATION_FLAG_THRESHOLD pairs. Does NOT auto-drop anything -- a
-#' human picks which metric to keep per "tells a similar ecological story" (source doc's own
-#' criterion, not purely mechanical).
+#' Pivot a long metrics table (site_id, ..., metric, value) to wide and flag |r| >
+#' CORRELATION_FLAG_THRESHOLD pairs. Does NOT auto-drop anything -- a human picks which metric to
+#' keep based on ecological relevance, not a purely mechanical rule.
 screen_metric_correlation <- function(metrics_long, id_cols) {
   wide <- tidyr::pivot_wider(
     metrics_long[, c(id_cols, "metric", "value")],

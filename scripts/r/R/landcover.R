@@ -1,15 +1,14 @@
-# Land-cover fraction/permeability helpers for Objective 4 (plan Sec.5.1/6). Operates on the
-# Airbus RF classifier's 10m delivered raster (RF_FINAL_CLASS_LABELS, see 00_config.R) -- NOT
-# Objective 1's Dynamic World scheme.
+# Land-cover fraction/permeability helpers for Objective 4. Operates on the Airbus RF classifier's
+# 10m delivered raster (RF_FINAL_CLASS_LABELS, see 00_config.R) -- NOT Objective 1's Dynamic World
+# scheme.
 
-#' Aggregate the 10m land-cover raster to fraction-per-class bands on the 30m master grid (plan
-#' Sec.5.1: "class fraction = class cell count / 9" for a 10m source). Each output band is the
-#' fraction of VALID (non-NA) fine cells within a coarse cell that belong to that class -- not a
-#' literal /9 -- so a coarse cell straddling the classified raster's edge reports composition
-#' among only its classified sub-pixels, rather than being diluted by out-of-AOI padding. A
-#' companion `valid_fraction` band (literal count-valid/9) is included so callers can flag/mask
-#' low-confidence coarse cells; any coarse cell with valid_fraction == 0 (fully outside the
-#' classified extent) is masked to NA across every band.
+#' Aggregate the 10m land-cover raster to fraction-per-class bands on the 30m master grid. Each
+#' output band is the fraction of VALID (non-NA) fine cells within a coarse cell that belong to
+#' that class -- not a literal class-cell-count/9 -- so a coarse cell straddling the classified
+#' raster's edge reports composition among only its classified sub-pixels, rather than being
+#' diluted by out-of-AOI padding. A companion `valid_fraction` band (literal count-valid/9) lets
+#' callers flag/mask low-confidence coarse cells; any coarse cell with valid_fraction == 0 (fully
+#' outside the classified extent) is masked to NA across every band.
 #'
 #' @param lc_path Path to the 10m land-cover GeoTIFF (categorical, RF_FINAL_CLASS_LABELS scheme).
 #' @param master_grid The 30m master-grid SpatRaster (build_master_grid()).

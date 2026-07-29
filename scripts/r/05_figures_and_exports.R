@@ -1,22 +1,20 @@
-# Objective 3: Objective 2 cross-check.
+# Objective 2 cross-check: compares 02's net natural-habitat change against Objective 2's
+# LandTrendr event-summary tables.
 #
 # RUN AS: cd scripts/r && Rscript 05_figures_and_exports.R
 #
-# Depends on 02 (transition tables, for landscape_net_natural_change_by_site.csv) and Objective
-# 2's own LandTrendr event-summary tables. Run 02 first; this script skips gracefully (with a
-# message) if its upstream tables aren't present yet.
+# Depends on 02's landscape_net_natural_change_by_site.csv; run 02 first. Skips gracefully (with
+# a message) if upstream tables, including Objective 2's LandTrendr CSVs, aren't present yet.
 #
-# This script used to also synthesize a linkage_priority_score.tif/candidate_linkage_areas.gpkg
-# from 05's Euclidean patch-graph output (betweenness, patch_importance_score). That synthesis
-# was removed 2026-07-29 along with 05_patch_importance_graph.R and the rest of the patch-graph
-# workflow -- see R/patch_graph.R's header comment for why (superseded by Objective 4's real
-# Circuitscape/Omniscape current-flow analysis, scripts/r/06-11_*.R). This script's remaining
-# Objective 2 cross-check below is independent of that removed workflow.
+# This script previously also built linkage_priority_score.tif/candidate_linkage_areas.gpkg from
+# a Euclidean patch-graph output (betweenness, patch_importance_score). That workflow
+# (05_patch_importance_graph.R, R/patch_graph.R) was removed 2026-07-29, superseded by Objective
+# 4's real Circuitscape/Omniscape current-flow analysis (scripts/r/06-11_*.R). The cross-check
+# below is independent of that removed workflow.
 #
-# Figures are NOT generated here -- all Objective 3 plotting lives in
+# Figures are not generated here -- plotting lives in
 # scripts/python/plotting/landscape_metrics.ipynb (pandas/matplotlib/seaborn), reading this
-# script's and 03's table outputs from outputs/tables/, for consistency with Objectives 1-2's
-# plotting convention (kept in Python, not duplicated per-language).
+# script's and 03's table outputs from outputs/tables/.
 
 source("00_config.R")
 source("R/io.R")
@@ -54,10 +52,10 @@ if (file.exists(net_natural_change_path) && file.exists(nbr_event_path) && file.
       by = "site_id"
     )
 
-  # Load-bearing caveat check: does Enarau's natural-habitat-expansion signal also appear at
-  # Mbokishi (the untouched reference site)? If so, it's more likely regional/rainfall-driven
-  # than Enarau-specific conservation activity -- a site *diverging* from Mbokishi is the
-  # defensible localized-effect claim (per the Objective 2->3 handoff notes).
+  # Caveat check: does Enarau's natural-habitat-expansion signal also appear at Mbokishi (the
+  # untouched reference site)? If so, it's more likely regional/rainfall-driven than
+  # Enarau-specific conservation activity -- a site *diverging* from Mbokishi is the more
+  # defensible localized-effect claim.
   mbokishi_change <- crosscheck$net_change_baseline_to_current_pct_of_site[crosscheck$site_id == "mbokishi"]
   crosscheck$diverges_from_mbokishi_pct_points <- crosscheck$net_change_baseline_to_current_pct_of_site - mbokishi_change
   crosscheck$caveat <- ifelse(

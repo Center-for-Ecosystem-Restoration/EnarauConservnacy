@@ -1,17 +1,13 @@
-# Step 08 (Objective 4): habitat patches + focal nodes (plan Sec.10).
+# Step 08 (Objective 4): habitat patches + focal nodes. RUN AS: cd scripts/r && Rscript
+# 08_habitat_patches_focal_nodes.R.
 #
-# RUN AS: cd scripts/r && Rscript 08_habitat_patches_focal_nodes.R
-#
-# Rebuilds patches from the NEW land-cover-derived core-habitat mask -- NOT a reuse of Objective
-# 3's Dynamic-World-based patches (plan's own resolution of that open question, see wiki Sec.
-# "Open Questions"). No igraph Euclidean patch-graph is built here -- Objective 3's own version of
-# that approach (formerly 05_patch_importance_graph.R) has since been removed entirely, since it's
-# explicitly superseded by this objective's real resistance-based Circuitscape/Omniscape
-# current-flow measures (see [[circuit-theory-connectivity]]'s Related Methods note);
-# "stepping-stone position"/"connectivity contribution" scores are computed in step 11 from actual
-# current-flow output, once it exists. mean_omniscape_current/max_omniscape_current (plan Sec.10.2)
-# are therefore NOT in this script's patch table -- step 11 joins them in after Omniscape (step 09)
-# has run.
+# Patches come from the NEW land-cover-derived core-habitat mask, not a reuse of Objective 3's
+# Dynamic-World-based patches. No igraph Euclidean patch-graph is built here -- that approach
+# (formerly 05_patch_importance_graph.R) was removed entirely, superseded by the resistance-based
+# Circuitscape/Omniscape current-flow measures produced later in this pipeline. "Stepping-stone
+# position"/"connectivity contribution" scores are computed in step 11 from actual current-flow
+# output once it exists -- mean_omniscape_current/max_omniscape_current are therefore NOT in this
+# script's patch table; step 11 joins them in after Omniscape (step 09) has run.
 
 source("00_config.R")
 source("R/io.R")

@@ -1,19 +1,16 @@
-# Step 09 (Objective 4): Omniscape runs (plan Sec.9).
+# Step 09 (Objective 4): Omniscape runs.
 #
 # RUN AS: cd scripts/r && Rscript 09_run_omniscape.R
 #
-# Requires 07_build_resistance_source_surfaces.R to have already run. Builds the full plan
-# Sec.9.3 minimum run set (OMNISCAPE_RUN_SET, 00_config.R) as an explicit task list. Each
-# scenario's `output/` directory existing is its own "already run" signal (idempotent re-runs) --
-# see R/connectivity_run.R's write_omniscape_config() docs for why inputs and Omniscape's own
-# project_name output must live in separate directories.
+# Requires 07_build_resistance_source_surfaces.R to have already run. Builds OMNISCAPE_RUN_SET
+# (00_config.R) as an explicit task list. Omniscape auto-increments its project_name output dir
+# instead of erroring if it already exists, so an `output/` directory existing is used as the
+# "already run" signal for idempotent re-runs (see R/connectivity_run.R's
+# write_omniscape_config() for why inputs and output live in separate directories).
 #
-# First real-scale timing (2026-07-29, Model A r100, 408x450 grid, 4 threads): ~6.5 minutes;
-# C_r200 (largest radius) took ~16.5 minutes. RUN_FULL_BATCH defaults to FALSE and stays that way
-# -- the tool driving this script caps any single command (even backgrounded) at 10 minutes, so
-# the calling agent runs each remaining scenario as its own separate invocation (or a fully
-# detached process for anything expected to exceed ~8 minutes) rather than looping through all of
-# them in one Rscript call, which silently gets killed mid-batch once that ceiling is hit.
+# RUN_FULL_BATCH defaults to FALSE: real runs take up to ~16.5 min (C_r200, largest radius), and
+# the tool driving this script caps any single command at 10 minutes -- so each remaining scenario
+# is launched as its own separate invocation rather than looping through all of them in one call.
 
 source("00_config.R")
 source("R/io.R")
@@ -49,8 +46,8 @@ scenario_specs <- lapply(OMNISCAPE_RUN_SET, function(spec) {
 
   if (!already_done) {
     if (!dir.exists(input_dir)) dir.create(input_dir, recursive = TRUE)
-    # Omniscape.jl reads whole single-band files -- write each scenario's resistance/source band
-    # out individually rather than pointing at the multi-band stack.
+    # Omniscape.jl reads whole single-band files, so each scenario's resistance/source band is
+    # written out individually rather than pointing at the multi-band stack.
     resistance_path <- file.path(input_dir, "resistance.tif")
     source_path <- file.path(input_dir, "source.tif")
     terra::writeRaster(resistance_models[[paste0("resistance_", spec$model)]], resistance_path, overwrite = TRUE)
@@ -74,8 +71,7 @@ for (s in scenario_specs) {
 manifest_path <- file.path(TABLES_DIR, "connectivity_omniscape_run_manifest.csv")
 manifest <- if (file.exists(manifest_path)) readr::read_csv(manifest_path, show_col_types = FALSE) else NULL
 
-# MANUAL GATE: FALSE processes just one remaining scenario per script run instead of the whole
-# batch -- see header comment for why this must stay FALSE given the calling tool's runtime cap.
+# MANUAL GATE: keep FALSE -- see header comment for the runtime-cap rationale.
 RUN_FULL_BATCH <- FALSE
 
 todo <- Filter(function(s) !s$already_done, scenario_specs)

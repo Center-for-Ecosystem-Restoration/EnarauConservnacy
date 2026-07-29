@@ -1,18 +1,11 @@
-# Step 06 (Objective 4): master grid + raw-input alignment.
+# Step 06 (Objective 4): builds the 30m connectivity master grid and aligns every raw input onto
+# it -- land-cover class fractions, settlement/road pressure, river proximity, riparian buffer,
+# slope/terrain ruggedness, and the vegetation-condition composite. Resistance/source-strength
+# surfaces are built separately in 07. RUN AS: cd scripts/r && Rscript
+# 06_prepare_connectivity_inputs.R (see 00_config.R for the renv/cwd requirement).
 #
-# RUN AS: cd scripts/r && Rscript 06_prepare_connectivity_inputs.R
-# (NOT `Rscript scripts/r/06_prepare_connectivity_inputs.R` from the repo root -- renv only
-# activates when the working directory is scripts/r/ itself. See 00_config.R's header comment.)
-#
-# Builds the 30m connectivity master grid and aligns every Objective 4 raw input onto it (plan
-# Sec.4-5): land-cover class fractions (from the Airbus RF classifier, outputs/rf_hab_classifier/),
-# settlement pressure, road pressure, river proximity/riparian buffer, slope + terrain ruggedness,
-# and the vegetation-condition composite. Resistance/source-strength surfaces (permeability
-# crosswalk, Models A/B/C) are a separate step (08) -- this script only produces the aligned
-# building-block layers plan Sec.3.3 lists as "derived layers required from the available data".
-#
-# No fence/gate data exists yet (see CLAUDE.md/wiki Open Questions) -- fence_barrier_30m.tif is
-# not produced here; Resistance Model D stays deferred until that data is mapped.
+# No fence/gate data exists yet, so fence_barrier_30m.tif isn't produced here; Resistance Model D
+# stays deferred until that data is mapped.
 
 source("00_config.R")
 source("R/io.R")
@@ -56,7 +49,7 @@ message("=== River proximity / riparian buffer ===")
 river_proximity_r <- feature_distance(CONNECTIVITY_INPUT_PATHS$streams, master_grid)
 names(river_proximity_r) <- "river_proximity_m"
 riparian_buffer_r <- riparian_buffer(river_proximity_r)
-# "dominated by natural land cover" per plan Sec.5.5 -- 0.5 fraction threshold for dominance.
+# Riparian buffer is counted as "natural cover" only where natural_fraction >= 0.5 (dominance).
 riparian_natural_cover_r <- riparian_buffer_r * (natural_fraction >= 0.5)
 names(riparian_natural_cover_r) <- "riparian_natural_cover"
 
