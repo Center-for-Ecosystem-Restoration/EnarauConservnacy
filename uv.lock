@@ -600,14 +600,14 @@ wheels = [
 
 [[package]]
 name = "eetools"
-source = { editable = "../../gee_utils" }
+version = "0.2.0"
+source = { git = "https://github.com/harrellgis/gee_utils.git?tag=v0.2.0#7cc55a8cbb2c726d3ea2339319b74c775aafd3de" }
 dependencies = [
     { name = "earthengine-api" },
     { name = "geopandas" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "python-dotenv" },
     { name = "seaborn" },
     { name = "shapely" },
 ]
@@ -615,30 +615,6 @@ dependencies = [
 [package.optional-dependencies]
 notebook = [
     { name = "geemap" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "earthengine-api", specifier = ">=0.1.370" },
-    { name = "geemap", marker = "extra == 'notebook'", specifier = ">=0.37.2" },
-    { name = "geopandas", specifier = ">=0.14.0" },
-    { name = "matplotlib", specifier = ">=3.8.0" },
-    { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pandas", specifier = ">=2.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "seaborn", specifier = ">=0.13.0" },
-    { name = "shapely", specifier = ">=2.0.0" },
-]
-provides-extras = ["notebook"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "black", specifier = ">=24.0.0" },
-    { name = "ipykernel", specifier = ">=7.2.0" },
-    { name = "jupyterlab", specifier = ">=4.5.8" },
-    { name = "mypy", specifier = ">=1.10.0" },
-    { name = "pytest", specifier = ">=8.0.0" },
-    { name = "ruff", specifier = ">=0.4.0" },
 ]
 
 [[package]]
@@ -651,6 +627,7 @@ dependencies = [
     { name = "joblib" },
     { name = "matplotlib" },
     { name = "pandas" },
+    { name = "python-dotenv" },
     { name = "rasterio" },
     { name = "scikit-learn" },
     { name = "seaborn" },
@@ -664,11 +641,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "eetools", extras = ["notebook"], editable = "../../gee_utils" },
+    { name = "eetools", extras = ["notebook"], git = "https://github.com/harrellgis/gee_utils.git?tag=v0.2.0" },
     { name = "geopandas", specifier = ">=1.1.4" },
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "pandas", specifier = ">=3.0.3" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "rasterio", specifier = ">=1.5.0" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
     { name = "seaborn", specifier = ">=0.13.0" },

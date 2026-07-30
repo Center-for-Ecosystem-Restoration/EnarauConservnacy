@@ -196,7 +196,13 @@ HLS_YEAR_START = 2015
 S2_YEAR_START = 2017
 YEAR_END = 2025  # last complete year as of this repo's current date
 
-SEASON_MONTHS = {"wet": (3, 5), "dry": (7, 10), "annual": (1, 12)}
+SEASON_MONTHS = {"wet": (3, 5), "dry": (7, 10), "annual": (1, 12)}  # each season's inclusive last month
+
+# eetools.utils.get_date_window's season_months values are the exclusive upper-bound month
+# (ee.Date.fromYMD(year_end, end_month, 1)), one past SEASON_MONTHS's inclusive last month above.
+EETOOLS_SEASON_MONTHS = {
+    season: (start, end + 1) for season, (start, end) in SEASON_MONTHS.items() if season != "annual"
+}
 
 # Headline multi-year periods -- distinct from DW_PERIODS above, which uses different year ranges
 # since Dynamic World only starts mid-2015.
