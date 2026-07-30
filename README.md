@@ -116,9 +116,9 @@ and produces the charts in `outputs/plots/`.
 
 | Notebook | Purpose |
 |---|---|
-| `historical_change_plots.ipynb` | Habitat/pressure composition by period, natural-habitat probability trend, and baseline→current transition-matrix heatmaps, for the Dynamic World analysis. |
+| `historical_change_plots.ipynb` | Habitat/pressure composition by period, natural-habitat probability trend, and baseline→current transition-matrix heatmaps, for the Dynamic World analysis. The pressure-composition chart uses uncalibrated thresholds (`config.DW_PRESSURE_THRESHOLDS`, never ground-truth-checked, unlike `DW_HABITAT_THRESHOLDS`) — treat it as preliminary; see `landscape_metrics.ipynb`'s Plots 7-10 for stronger complementary pressure/threat evidence. |
 | `productivity_degradation_plots.ipynb` | Index trend lines, a reference-normalized (site-minus-Mbokishi) anomaly chart, pre-vs-current condition boxplots, LandTrendr disturbance/recovery area comparisons, and CHIRPS rainfall context, for the LandTrendr analysis. |
-| `landscape_metrics.ipynb` | Fragmentation-metric trend lines and the metric-correlation heatmap, for the R landscape-metrics analysis below. |
+| `landscape_metrics.ipynb` | Fragmentation-metric trend lines and the metric-correlation heatmap, for the R landscape-metrics analysis below, plus pressure/threat context maps (Objective 4 settlement/road pressure, Objective 3 local edge/patch-density change). |
 
 ### R scripts — `scripts/r/` (run in order, from that directory)
 

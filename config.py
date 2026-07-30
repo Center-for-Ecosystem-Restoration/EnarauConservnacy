@@ -15,6 +15,10 @@ RF_CLASSIFIER_DIR = OUTPUTS_DIR / "rf_hab_classifier"
 # truth) -- R reads from this local landing folder. Not R-importable as a path object, so
 # scripts/r/00_config.R mirrors this path literally (R cannot `import config.py`).
 DW_RASTER_INPUT_DIR = RASTER_DIR / "dynamic_world"
+# Objective 4 (Circuitscape/Omniscape connectivity) raster outputs -- written by
+# scripts/r/06_prepare_connectivity_inputs.R through 11_consensus_priority_mapping.R. Not
+# R-importable as a path object, so scripts/r/00_config.R mirrors this path literally.
+CONNECTIVITY_RASTER_DIR = RASTER_DIR / "connectivity"
 
 OUTPUT_DIRS = {
     "plots": PLOTS_DIR,
@@ -23,6 +27,7 @@ OUTPUT_DIRS = {
     "rasters": RASTER_DIR,
     "vectors": VECTORS_DIR,
     "rf_hab_classifier": RF_CLASSIFIER_DIR,
+    "connectivity": CONNECTIVITY_RASTER_DIR,
 }
 
 #################### AOI BOUNDARIES ##########################
@@ -36,9 +41,9 @@ AOI_PATHS = {
 #################### CONNECTIVITY RAW INPUTS ##########################
 # Authoritative copies of the connectivity analysis's raw GIS inputs -- hand-produced/QGIS
 # deliverables, not regenerable pipeline outputs, so they live in data/ rather than outputs/.
-# CRS note: roads/streams/settlements/settlement_heatmap arrived tagged in the wrong UTM zone and
-# were reprojected in place before use; re-check CRS if any of these four are ever re-exported
-# from their source QGIS project (see git history for the fix if needed).
+# CRS note: roads/streams/settlements/settlement_heatmap should use PROJECT_CRS;
+# re-check CRS if any of these four are ever re-exported from their source QGIS project
+# (see git history for the fix if needed).
 CONNECTIVITY_INPUT_PATHS = {
     "roads": DATA_DIR / "roads.gpkg",
     "streams": DATA_DIR / "streams.gpkg",
@@ -46,9 +51,12 @@ CONNECTIVITY_INPUT_PATHS = {
     "elevation": DATA_DIR / "elevation.tif",
     "slope": DATA_DIR / "slope.tif",
     "settlement_heatmap": DATA_DIR / "settlement_heatmap.tif",
-    "condition_score_wet": DATA_DIR / "condition_score_wet_2022_2025_project.tif",
-    "condition_score_dry": DATA_DIR / "condition_score_dry_2022_2025_project.tif",
-    "condition_score_current": DATA_DIR / "condition_score_current_2022_2025_project.tif",
+    "condition_score_wet": DATA_DIR
+    / "condition_score_wet_2022_2025_project.tif",
+    "condition_score_dry": DATA_DIR
+    / "condition_score_dry_2022_2025_project.tif",
+    "condition_score_current": DATA_DIR
+    / "condition_score_current_2022_2025_project.tif",
 }
 
 #################### SITE METADATA ##########################
@@ -74,15 +82,21 @@ SITES = [
         "path": AOI_PATHS["phase_2_corridor"],
     },
 ]
-STUDY_AREA_BUFFER_M = 150  # buffer around the union of all sites for project-wide exports
-REFERENCE_SITE_ID = "mbokishi"  # intact reference site for site-relative anomaly comparisons
+STUDY_AREA_BUFFER_M = (
+    150  # buffer around the union of all sites for project-wide exports
+)
+REFERENCE_SITE_ID = (
+    "mbokishi"  # intact reference site for site-relative anomaly comparisons
+)
 
 #################### PROJECT-WIDE SETTINGS ##########################
 PROJECT_CRS = "EPSG:32736"  # WGS 84 / UTM zone 36S -- used by every notebook/script in this repo
 
 #################### DYNAMIC WORLD HISTORICAL CHANGE ##########################
 DW_EXPORT_FOLDER = "CERK_Enarau_DW_HistoricalChange"
-DW_EXCLUDED_PROB_BANDS = ["snow_and_ice"]  # filtered out of eetools.constants.DW_PROBABILITY_BANDS
+DW_EXCLUDED_PROB_BANDS = [
+    "snow_and_ice"
+]  # filtered out of eetools.constants.DW_PROBABILITY_BANDS
 
 DW_DERIVED_BANDS = [
     "natural_prob",
@@ -109,7 +123,9 @@ DW_MIN_OBS_ANNUAL = 3
 # Seasonal floor is deliberately low: the wet season (Mar-May) is the rainiest part of the year at
 # this AOI and frequently clears no more than 1-2 cloud-free Sentinel-2 passes -- see notes.md.
 DW_MIN_OBS_SEASONAL = 1
-DW_COVERAGE_WARNING_PCT = 60  # reporting threshold only -- does not mask any pixels
+DW_COVERAGE_WARNING_PCT = (
+    60  # reporting threshold only -- does not mask any pixels
+)
 
 # Habitat classification thresholds -- calibrated against a ground-truth RF classification (see
 # notes.md's "DW Historical Change Detection" section for the full calibration history, including
@@ -118,8 +134,8 @@ DW_COVERAGE_WARNING_PCT = 60  # reporting threshold only -- does not mask any pi
 # threshold makes more pixels match that class.
 DW_HABITAT_THRESHOLDS = {
     "crops_min": 0.14,  # crops is a single raw DW band while woody/grass/natural are sums of 2-3
-                         # bands sharing the same 1.0 probability budget, so a matched floor would
-                         # systematically favor the aggregated bands -- kept well below woody/grass.
+    # bands sharing the same 1.0 probability budget, so a matched floor would
+    # systematically favor the aggregated bands -- kept well below woody/grass.
     "built_min": 0.25,
     "water_wetland_min": 0.35,
     "bare_min": 0.30,
@@ -128,9 +144,11 @@ DW_HABITAT_THRESHOLDS = {
     "woody_grass_margin": 0.00,  # no dominance gap required between woody vs. grass
     "natural_min": 0.30,  # "mixed natural habitat" catch-all; no margin restriction (true fallback)
     "top1_min": 0.26,  # DW's own confidence proxy; sand/bare/arid surfaces depress this by scoring
-                        # ambiguously across several classes at once
+    # ambiguously across several classes at once
 }
-DW_HABITAT_CLASS_CODES = list(range(1, 9))  # classify_habitat never emits 0 (NoData/outside AOI)
+DW_HABITAT_CLASS_CODES = list(
+    range(1, 9)
+)  # classify_habitat never emits 0 (NoData/outside AOI)
 DW_HABITAT_CLASS_LABELS = {
     1: "Woody",
     2: "Grassland",
@@ -184,7 +202,14 @@ DW_PRESSURE_VIS = {
 DW_TRANSITION_VIS = {
     "min": 11,
     "max": 88,
-    "palette": ["#800026", "#f03b20", "#fd8d3c", "#ffffb2", "#c7e9b4", "#41b6c4"],
+    "palette": [
+        "#800026",
+        "#f03b20",
+        "#fd8d3c",
+        "#ffffb2",
+        "#c7e9b4",
+        "#41b6c4",
+    ],
 }
 
 #################### PRODUCTIVITY & DEGRADATION TIME SERIES (LANDTRENDR) ##########################
@@ -196,12 +221,18 @@ HLS_YEAR_START = 2015
 S2_YEAR_START = 2017
 YEAR_END = 2025  # last complete year as of this repo's current date
 
-SEASON_MONTHS = {"wet": (3, 5), "dry": (7, 10), "annual": (1, 12)}  # each season's inclusive last month
+SEASON_MONTHS = {
+    "wet": (3, 5),
+    "dry": (7, 10),
+    "annual": (1, 12),
+}  # each season's inclusive last month
 
 # eetools.utils.get_date_window's season_months values are the exclusive upper-bound month
 # (ee.Date.fromYMD(year_end, end_month, 1)), one past SEASON_MONTHS's inclusive last month above.
 EETOOLS_SEASON_MONTHS = {
-    season: (start, end + 1) for season, (start, end) in SEASON_MONTHS.items() if season != "annual"
+    season: (start, end + 1)
+    for season, (start, end) in SEASON_MONTHS.items()
+    if season != "annual"
 }
 
 # Headline multi-year periods -- distinct from DW_PERIODS above, which uses different year ranges
@@ -301,7 +332,9 @@ RF_TO_DW_HABITAT_CROSSWALK = {
 }
 
 RF_RASTER_NODATA = 65535  # Airbus mosaic NoData value
-RF_CLASSIFICATION_NODATA = 255  # output raster NoData; does not overlap class IDs 1-8
+RF_CLASSIFICATION_NODATA = (
+    255  # output raster NoData; does not overlap class IDs 1-8
+)
 RF_RANDOM_SEED = 42
 RF_TEST_FRACTION = 0.20
 RF_MAX_PIXELS_PER_POLYGON = 150
@@ -321,7 +354,9 @@ RF_PARAMS = {
 # scripts/python/notebooks/connectivity_condition_composite.ipynb, reusing the same eetools
 # Sentinel-2 collection builder and PERIODS/SEASON_MONTHS constants already established above, at
 # S2 native 10m (aggregated to the 30m connectivity master grid on the R side, not here).
-CONNECTIVITY_CONDITION_EXPORT_FOLDER = "CERK_Enarau_Objective4_ConditionComposite"
+CONNECTIVITY_CONDITION_EXPORT_FOLDER = (
+    "CERK_Enarau_Objective4_ConditionComposite"
+)
 CONNECTIVITY_CONDITION_PERIOD = PERIODS["current"]  # (2022, 2025)
 
 # MSAVI2 (not NDVI) for productivity -- this AOI is savanna/sparse-canopy, where MSAVI2's

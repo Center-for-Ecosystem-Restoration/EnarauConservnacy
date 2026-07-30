@@ -236,8 +236,6 @@ NATURAL_CLASSES    <- c(1, 2, 3)
 CONVERSION_CLASSES <- c(4, 5, 6)
 EXCLUDED_CLASSES   <- c(7, 8)  # + raster NA
 
-DW_PRESSURE_CLASS_LABELS <- c(`0` = "Low", `1` = "Moderate", `2` = "High")
-
 #################### PERIODS ####################
 # Matches config.py's DW_PERIODS; the productivity/degradation PERIODS uses different year ranges
 # (Landsat baseline 1984-2000) and is NOT the same dict.

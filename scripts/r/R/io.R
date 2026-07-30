@@ -12,10 +12,6 @@ expand_seasonal_manifest <- function() {
     DW_INPUT_RASTER_DIR,
     sprintf("DW_class_%s_%d_project.tif", grid$season, grid$year)
   )
-  grid$pressure_file <- file.path(
-    DW_INPUT_RASTER_DIR,
-    sprintf("DW_pressure_%s_%d_project.tif", grid$season, grid$year)
-  )
   grid
 }
 
@@ -28,10 +24,6 @@ period_manifest <- data.frame(
   class_file = file.path(
     DW_INPUT_RASTER_DIR,
     sprintf("DW_class_%s_project.tif", DW_PERIOD_TOKENS)
-  ),
-  pressure_file = file.path(
-    DW_INPUT_RASTER_DIR,
-    sprintf("DW_pressure_%s_project.tif", DW_PERIOD_TOKENS)
   ),
   stringsAsFactors = FALSE
 )
@@ -60,8 +52,8 @@ MASK_FILES <- c(
 check_inputs_present <- function(strict = TRUE) {
   seasonal <- expand_seasonal_manifest()
   files <- c(
-    period_manifest$stack_file, period_manifest$class_file, period_manifest$pressure_file,
-    seasonal$habitat_class_file, seasonal$pressure_file,
+    period_manifest$stack_file, period_manifest$class_file,
+    seasonal$habitat_class_file,
     TRANSITION_FILES, MASK_FILES
   )
   missing <- files[!file.exists(files)]
@@ -89,8 +81,7 @@ check_inputs_present <- function(strict = TRUE) {
 #' bounding box (an upstream eetools export bug, since fixed). For habitat_class this is harmless
 #' to detect: `0` is never a real class (1-8), so it's unambiguous regardless of position. This
 #' function converts `0 -> NA` immediately so downstream consumers can rely on ordinary is.na()
-#' semantics -- do not read habitat_class rasters via bare terra::rast() elsewhere. (Contrast with
-#' read_pressure_raster(), where `0` is a real class value and this trick does not work.)
+#' semantics -- do not read habitat_class rasters via bare terra::rast() elsewhere.
 read_habitat_raster <- function(path) {
   if (!file.exists(path)) stop("Habitat raster not found: ", path)
   r <- terra::rast(path)
@@ -109,29 +100,6 @@ read_habitat_raster <- function(path) {
   }
   r <- terra::subst(r, 0, NA)
   names(r) <- "habitat_class"
-  r
-}
-
-#' Read a pressure_class raster (values 0/1/2 -- 0 = "Low" is a REAL class here, unlike
-#' habitat_class's 0). Has the same literal-0 exterior-fringe defect as habitat_class, but the
-#' 0->NA trick doesn't work here since 0 is also a real "Low" value inside the true AOI --
-#' indistinguishable by value alone. Instead masks to the reconstructed project_geom polygon
-#' (build_project_geom()/project_geom_vect(), below), converting everything outside the true AOI
-#' to NA regardless of value. Only rasters exported before the upstream eetools fix need this clip.
-read_pressure_raster <- function(path) {
-  if (!file.exists(path)) stop("Pressure raster not found: ", path)
-  r <- terra::rast(path)
-  r <- terra::mask(r, project_geom_vect())
-  vals <- terra::values(r, na.rm = TRUE)
-  if (length(vals) > 0) {
-    if (any(vals == NODATA_SENTINEL)) {
-      warning(path, ": literal -9999 present -- unexpected, investigate")
-    }
-    if (any(!vals %in% 0:2)) {
-      stop(path, ": value outside the 0-2 pressure class scheme found (0=Low, 1=Moderate, 2=High)")
-    }
-  }
-  names(r) <- "pressure_class"
   r
 }
 

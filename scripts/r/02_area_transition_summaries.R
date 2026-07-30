@@ -14,7 +14,6 @@ area_period      <- readr::read_csv(file.path(TABLES_DIR, "dw_area_by_class_by_s
 transition_area  <- readr::read_csv(file.path(TABLES_DIR, "dw_transition_area_by_site.csv"), show_col_types = FALSE)
 
 habitat_cols <- paste0("habitat_area_ha_", 1:8)
-pressure_cols <- paste0("pressure_area_ha_", 0:2)
 
 # ---- Tidy (long) area-by-class tables ----
 tidy_area <- function(df, id_cols) {
