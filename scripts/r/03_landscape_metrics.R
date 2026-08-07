@@ -25,20 +25,28 @@ coverage_period <- if (file.exists(coverage_period_path)) readr::read_csv(covera
 site_boundaries <- lapply(SITES$site_id, read_site_boundary)
 names(site_boundaries) <- SITES$site_id
 
-#' Runs class + binary + entropy metrics per site for one habitat_class raster, excluding any
-#' site below the coverage threshold when a coverage table is supplied.
+#' Runs class + binary + entropy metrics per site for one habitat_class raster. A site below the
+#' coverage threshold is NOT dropped -- its metrics are computed and every row is tagged
+#' `below_coverage_threshold = TRUE` instead, so it stays available for the plotting notebook to
+#' render distinctly (e.g. a flagged marker) rather than silently disappearing. Pooled analyses
+#' downstream in this script (the correlation screen, the metric-change summary) filter these
+#' rows back out -- treat them as "known but not trusted," not as validated data.
 run_metrics_for_raster <- function(habitat_class_path, id_values, coverage_table = NULL) {
   r <- read_habitat_raster(habitat_class_path)
   r_full <- recode_full_habitat(r)
   r_bin  <- make_natural_binary(r)
 
   rows <- lapply(SITES$site_id, function(sid) {
+    below_threshold <- FALSE
     if (!is.null(coverage_table)) {
       match_rows <- coverage_table[coverage_table$site_id == sid, , drop = FALSE]
       for (nm in names(id_values)) match_rows <- match_rows[match_rows[[nm]] == id_values[[nm]], , drop = FALSE]
       if (nrow(match_rows) > 0 && isTRUE(match_rows$below_threshold[1])) {
-        message("  Skipping ", sid, " (", paste(id_values, collapse = "/"), ") -- below valid-pixel coverage threshold.")
-        return(NULL)
+        below_threshold <- TRUE
+        message("  ", sid, " (", paste(id_values, collapse = "/"), ") is below the valid-pixel coverage ",
+                "threshold -- computing anyway but tagging below_coverage_threshold = TRUE (likely inflated ",
+                "PD/ED from artificial patch breaks; excluded from the correlation screen and metric-change ",
+                "summary below).")
       }
     }
     site_vect <- terra::vect(site_boundaries[[sid]])
@@ -46,19 +54,18 @@ run_metrics_for_raster <- function(habitat_class_path, id_values, coverage_table
     r_bin_site  <- mask_to_site(r_bin, site_vect)
 
     class_m <- calculate_class_metrics(r_full_site)
-    class_m <- cbind(site_id = sid, class_m, as.data.frame(id_values))
+    class_m <- cbind(site_id = sid, class_m, as.data.frame(id_values), below_coverage_threshold = below_threshold)
 
     binary_m <- calculate_binary_metrics(r_bin_site)
-    binary_m <- cbind(site_id = sid, binary_m, as.data.frame(id_values))
+    binary_m <- cbind(site_id = sid, binary_m, as.data.frame(id_values), below_coverage_threshold = below_threshold)
 
     entropy_full <- calculate_entropy_pilot(r_full_site)
-    entropy_full <- cbind(site_id = sid, landscape_type = "full_class", entropy_full, as.data.frame(id_values))
+    entropy_full <- cbind(site_id = sid, landscape_type = "full_class", entropy_full, as.data.frame(id_values), below_coverage_threshold = below_threshold)
     entropy_bin <- calculate_entropy_pilot(r_bin_site)
-    entropy_bin <- cbind(site_id = sid, landscape_type = "binary_natural", entropy_bin, as.data.frame(id_values))
+    entropy_bin <- cbind(site_id = sid, landscape_type = "binary_natural", entropy_bin, as.data.frame(id_values), below_coverage_threshold = below_threshold)
 
     list(class = class_m, binary = binary_m, entropy = dplyr::bind_rows(entropy_full, entropy_bin))
   })
-  rows <- rows[!vapply(rows, is.null, logical(1))]
   list(
     class = dplyr::bind_rows(lapply(rows, `[[`, "class")),
     binary = dplyr::bind_rows(lapply(rows, `[[`, "binary")),
@@ -121,11 +128,15 @@ if (!is.null(entropy_metrics) && nrow(entropy_metrics) > 0) {
   readr::write_csv(entropy_metrics, file.path(TABLES_DIR, "landscape_entropy_pilot_by_site_year_season.csv"))
 }
 
+# binary_metrics now includes below-coverage-threshold rows (tagged, not dropped -- see
+# run_metrics_for_raster()'s docs above); the pooled analyses below need the trusted subset only.
+binary_metrics_trusted <- if (!is.null(binary_metrics)) binary_metrics[!binary_metrics$below_coverage_threshold, ] else binary_metrics
+
 # ---- Correlation screen (binary-natural metric set + entropy pilot, pooled across all series) ----
-if (!is.null(binary_metrics) && nrow(binary_metrics) > 0) {
+if (!is.null(binary_metrics_trusted) && nrow(binary_metrics_trusted) > 0) {
   message("=== Correlation screen ===")
-  id_cols <- intersect(c("site_id", "year", "season", "period"), names(binary_metrics))
-  screen <- screen_metric_correlation(binary_metrics, id_cols = id_cols)
+  id_cols <- intersect(c("site_id", "year", "season", "period"), names(binary_metrics_trusted))
+  screen <- screen_metric_correlation(binary_metrics_trusted, id_cols = id_cols)
   readr::write_csv(
     as.data.frame(as.table(screen$correlation_matrix)),
     file.path(TABLES_DIR, "landscape_metric_correlation_matrix.csv")
@@ -139,8 +150,8 @@ if (!is.null(binary_metrics) && nrow(binary_metrics) > 0) {
 }
 
 # ---- Metric change summary (period-to-period deltas) ----
-if (!is.null(binary_metrics) && "period" %in% names(binary_metrics) && nrow(binary_metrics) > 0) {
-  period_binary <- binary_metrics[!is.na(binary_metrics$period), ]
+if (!is.null(binary_metrics_trusted) && "period" %in% names(binary_metrics_trusted) && nrow(binary_metrics_trusted) > 0) {
+  period_binary <- binary_metrics_trusted[!is.na(binary_metrics_trusted$period), ]
   wide <- tidyr::pivot_wider(
     period_binary[, c("site_id", "period", "metric", "value")],
     names_from = period, values_from = value
