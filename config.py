@@ -15,10 +15,16 @@ RF_CLASSIFIER_DIR = OUTPUTS_DIR / "rf_hab_classifier"
 # truth) -- R reads from this local landing folder. Not R-importable as a path object, so
 # scripts/r/00_config.R mirrors this path literally (R cannot `import config.py`).
 DW_RASTER_INPUT_DIR = RASTER_DIR / "dynamic_world"
-# Objective 4 (Circuitscape/Omniscape connectivity) raster outputs -- written by
+# (Circuitscape/Omniscape connectivity) raster outputs -- written by
 # scripts/r/06_prepare_connectivity_inputs.R through 11_consensus_priority_mapping.R. Not
 # R-importable as a path object, so scripts/r/00_config.R mirrors this path literally.
 CONNECTIVITY_RASTER_DIR = RASTER_DIR / "connectivity"
+# Landing folder for the connectivity analysis's raw raster inputs (elevation/slope/settlement
+# heatmap/condition-score) -- populated by connectivity_terrain_settlement_inputs.ipynb and
+# connectivity_condition_composite.ipynb (GEE exports downloaded from Drive, or written locally
+# directly). Too large to commit, so this lives under gitignored outputs/ rather than data/. Not
+# R-importable as a path object, so scripts/r/00_config.R mirrors this path literally.
+CONNECTIVITY_INPUT_RASTER_DIR = RASTER_DIR / "connectivity_inputs"
 
 OUTPUT_DIRS = {
     "plots": PLOTS_DIR,
@@ -39,25 +45,61 @@ AOI_PATHS = {
 }
 
 #################### CONNECTIVITY RAW INPUTS ##########################
-# Authoritative copies of the connectivity analysis's raw GIS inputs -- hand-produced/QGIS
-# deliverables, not regenerable pipeline outputs, so they live in data/ rather than outputs/.
-# CRS note: roads/streams/settlements/settlement_heatmap should use PROJECT_CRS;
-# re-check CRS if any of these four are ever re-exported from their source QGIS project
-# (see git history for the fix if needed).
+# roads/streams/settlements are small hand-produced/QGIS vector deliverables, authoritative and
+# committed in data/. Everything else here is a raster too large to commit -- generated within
+# this repo (see connectivity_terrain_settlement_inputs.ipynb and
+# connectivity_condition_composite.ipynb) and landing in gitignored CONNECTIVITY_INPUT_RASTER_DIR
+# rather than data/. CRS note: roads/streams/settlements needed a UTM-zone fix before use
+# (see git history); re-check CRS if any of these three are ever re-exported from their source
+# QGIS project.
 CONNECTIVITY_INPUT_PATHS = {
     "roads": DATA_DIR / "roads.gpkg",
     "streams": DATA_DIR / "streams.gpkg",
     "settlements": DATA_DIR / "settlements.gpkg",
-    "elevation": DATA_DIR / "elevation.tif",
-    "slope": DATA_DIR / "slope.tif",
-    "settlement_heatmap": DATA_DIR / "settlement_heatmap.tif",
-    "condition_score_wet": DATA_DIR
+    "elevation": CONNECTIVITY_INPUT_RASTER_DIR / "elevation.tif",
+    "slope": CONNECTIVITY_INPUT_RASTER_DIR / "slope.tif",
+    "settlement_heatmap": CONNECTIVITY_INPUT_RASTER_DIR
+    / "settlement_heatmap.tif",
+    "condition_score_wet": CONNECTIVITY_INPUT_RASTER_DIR
     / "condition_score_wet_2022_2025_project.tif",
-    "condition_score_dry": DATA_DIR
+    "condition_score_dry": CONNECTIVITY_INPUT_RASTER_DIR
     / "condition_score_dry_2022_2025_project.tif",
-    "condition_score_current": DATA_DIR
+    "condition_score_current": CONNECTIVITY_INPUT_RASTER_DIR
     / "condition_score_current_2022_2025_project.tif",
 }
+
+#################### CONNECTIVITY TERRAIN + SETTLEMENT HEATMAP GENERATION ##########################
+# Regenerates elevation.tif/slope.tif/settlement_heatmap.tif in-repo (see
+# connectivity_terrain_settlement_inputs.ipynb) rather than relying on the original hand-produced
+# QGIS versions -- align_to_grid() in the R pipeline reprojects/resamples every connectivity input
+# onto the 30m master grid regardless of its native source, so this substitution doesn't require
+# matching the original files' exact grid.
+CONNECTIVITY_TERRAIN_EXPORT_FOLDER = "CERK_Enarau_Objective4_TerrainInputs"
+CONNECTIVITY_TERRAIN_DEM_SOURCE = (
+    "USGS/SRTMGL1_003"  # void-filled SRTM 30m, standard GEE DEM
+)
+CONNECTIVITY_TERRAIN_SCALE_M = 30  # SRTM native resolution
+
+# Settlement heatmap: a local (non-Earth-Engine) KDE over data/settlements.gpkg's point/centroid
+# locations, rasterized directly to CONNECTIVITY_INPUT_RASTER_DIR -- starting values, not
+# calibrated against the original QGIS heatmap's own (unknown) kernel radius; revisit if
+# downstream settlement_pressure_30m.tif looks meaningfully different from prior runs.
+SETTLEMENT_HEATMAP_RADIUS_M = 500
+SETTLEMENT_HEATMAP_RESOLUTION_M = (
+    10  # matches the condition-composite/land-cover native resolution
+)
+
+#################### HAB CLASS RAW INPUTS (machine-specific, not versioned) ##########################
+# Multi-GB raw inputs for hab_class.ipynb (the Airbus mosaic, training polygons, and cultivated-area
+# overrides) live outside this repo on the analyst's own machine, not in DATA_DIR. Update
+# HAB_CLASS_RAW_DIR for your own machine before running hab_class.ipynb -- same convention as
+# scripts/r/00_config.R's JULIA_BIN.
+HAB_CLASS_RAW_DIR = Path(r"C:\Users\harre\Desktop\CERK\Mara_Enarau\hab_class")
+AIRBUS_RASTER_PATH = HAB_CLASS_RAW_DIR / "airbus_mosaic_cloud_masked_2.tif"
+TRAINING_GPKG_PATH = (
+    HAB_CLASS_RAW_DIR / "hab_class_training_sample_polygons_final.gpkg"
+)
+CULTIVATED_POLY_PATH = HAB_CLASS_RAW_DIR / "cultivated_poly.gpkg"
 
 #################### SITE METADATA ##########################
 SITES = [

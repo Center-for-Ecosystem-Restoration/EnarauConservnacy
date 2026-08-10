@@ -3,12 +3,9 @@
 # scheme.
 
 #' Aggregate the 10m land-cover raster to fraction-per-class bands on the 30m master grid. Each
-#' output band is the fraction of VALID (non-NA) fine cells within a coarse cell that belong to
-#' that class -- not a literal class-cell-count/9 -- so a coarse cell straddling the classified
-#' raster's edge reports composition among only its classified sub-pixels, rather than being
-#' diluted by out-of-AOI padding. A companion `valid_fraction` band (literal count-valid/9) lets
-#' callers flag/mask low-confidence coarse cells; any coarse cell with valid_fraction == 0 (fully
-#' outside the classified extent) is masked to NA across every band.
+#' band is the fraction of VALID (non-NA) fine cells within a coarse cell belonging to that class,
+#' so edge cells aren't diluted by out-of-AOI padding. A companion `valid_fraction` band lets
+#' callers flag low-confidence coarse cells; cells with valid_fraction == 0 are masked to NA.
 #'
 #' @param lc_path Path to the 10m land-cover GeoTIFF (categorical, RF_FINAL_CLASS_LABELS scheme).
 #' @param master_grid The 30m master-grid SpatRaster (build_master_grid()).
@@ -43,8 +40,7 @@ class_fraction_stack <- function(lc_path, master_grid, class_labels = RF_FINAL_C
 }
 
 #' Sum a class-fraction stack's bands for a set of class IDs into one grouped-fraction layer
-#' (e.g. NATURAL_LC_CLASSES -> natural_fraction). `class_ids` indexes into `class_labels` the
-#' same way class_fraction_stack() built the band names.
+#' (e.g. NATURAL_LC_CLASSES -> natural_fraction).
 grouped_fraction <- function(fraction_stack, class_ids, class_labels = RF_FINAL_CLASS_LABELS) {
   band_names <- paste0(unname(class_labels[as.character(class_ids)]), "_fraction")
   sum(fraction_stack[[band_names]])

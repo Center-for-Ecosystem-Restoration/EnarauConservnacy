@@ -27,14 +27,12 @@ focal_nodes <- sf::st_read(file.path(VECTORS_DIR, "connectivity_focal_nodes_curr
 message(nrow(focal_nodes), " focal nodes loaded: ", paste(focal_nodes$patch_id, collapse = ", "))
 
 message("=== Building focal-node point raster (patch_id as the Circuitscape point ID) ===")
-# st_point_on_surface() guarantees a point INSIDE the polygon (unlike a centroid, which can fall
-# outside an irregular/concave patch).
+# guarantees a point inside the polygon (unlike a centroid, which can fall outside a concave patch)
 focal_points <- sf::st_point_on_surface(focal_nodes)
 points_raster <- terra::rasterize(terra::vect(focal_points), master_grid, field = "patch_id")
 names(points_raster) <- "focal_node_id"
 
-circuitscape_dir <- file.path(CONNECTIVITY_OUTPUT_DIR, "circuitscape")
-if (!dir.exists(circuitscape_dir)) dir.create(circuitscape_dir, recursive = TRUE)
+circuitscape_dir <- CIRCUITSCAPE_OUTPUT_DIR
 
 habitat_path <- file.path(circuitscape_dir, "resistance_C.tif")
 points_path <- file.path(circuitscape_dir, "focal_nodes.tif")

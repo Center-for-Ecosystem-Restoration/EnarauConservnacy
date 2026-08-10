@@ -29,9 +29,10 @@ OUTPUTS_DIR           <- file.path(REPO_ROOT, "outputs")
 RASTER_DIR            <- file.path(OUTPUTS_DIR, "rasters")
 PLOTS_DIR             <- file.path(OUTPUTS_DIR, "plots")
 TABLES_DIR            <- file.path(OUTPUTS_DIR, "tables")
-LANDSCAPE_RASTER_DIR  <- file.path(RASTER_DIR, "landscape_metrics")  # landscape-metrics raster outputs
+LANDSCAPE_RASTER_DIR  <- file.path(RASTER_DIR, "landscape_metrics")
 DW_INPUT_RASTER_DIR   <- file.path(RASTER_DIR, "dynamic_world")      # manually-downloaded Dynamic World inputs
 VECTORS_DIR           <- file.path(OUTPUTS_DIR, "vectors")
+RF_CLASSIFIER_DIR     <- file.path(OUTPUTS_DIR, "rf_hab_classifier")  # written by hab_class.ipynb, read-only here
 
 for (d in c(LANDSCAPE_RASTER_DIR, VECTORS_DIR, TABLES_DIR, PLOTS_DIR)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
@@ -57,61 +58,59 @@ SITES <- data.frame(
 )
 
 #################### CONNECTIVITY RAW INPUTS ####################
-# Mirrors config.py's CONNECTIVITY_INPUT_PATHS. CRS note: roads/streams/settlements/
-# settlement_heatmap needed a UTM-zone fix before use (see config.py's own comment); re-check CRS
-# on any future re-export of these four files.
+# Mirrors config.py's CONNECTIVITY_INPUT_PATHS. roads/streams/settlements are committed vector
+# deliverables in data/; everything else is a generated raster too large to commit, landing in
+# CONNECTIVITY_INPUT_RASTER_DIR instead (see connectivity_terrain_settlement_inputs.ipynb and
+# connectivity_condition_composite.ipynb). CRS note: roads/streams/settlements needed a UTM-zone
+# fix before use (see git history); re-check CRS on any future re-export of these three files.
+CONNECTIVITY_INPUT_RASTER_DIR <- file.path(RASTER_DIR, "connectivity_inputs")
 CONNECTIVITY_INPUT_PATHS <- list(
   roads                   = file.path(DATA_DIR, "roads.gpkg"),
   streams                 = file.path(DATA_DIR, "streams.gpkg"),
   settlements             = file.path(DATA_DIR, "settlements.gpkg"),
-  elevation               = file.path(DATA_DIR, "elevation.tif"),
-  slope                   = file.path(DATA_DIR, "slope.tif"),
-  settlement_heatmap      = file.path(DATA_DIR, "settlement_heatmap.tif"),
-  condition_score_wet     = file.path(DATA_DIR, "condition_score_wet_2022_2025_project.tif"),
-  condition_score_dry     = file.path(DATA_DIR, "condition_score_dry_2022_2025_project.tif"),
-  condition_score_current = file.path(DATA_DIR, "condition_score_current_2022_2025_project.tif")
+  elevation               = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "elevation.tif"),
+  slope                   = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "slope.tif"),
+  settlement_heatmap      = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "settlement_heatmap.tif"),
+  condition_score_wet     = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "condition_score_wet_2022_2025_project.tif"),
+  condition_score_dry     = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "condition_score_dry_2022_2025_project.tif"),
+  condition_score_current = file.path(CONNECTIVITY_INPUT_RASTER_DIR, "condition_score_current_2022_2025_project.tif")
 )
 
 #################### CONNECTIVITY MASTER GRID ####################
-# 30m primary landscape-wide grid. build_master_grid() (R/grid.R) rounds project_geom_vect()'s
-# extent outward to a clean 30m origin -- confirmed to reproduce data/elevation.tif's own grid
-# exactly, so elevation.tif/slope.tif need no further CRS/extent correction.
+# 30m primary landscape-wide grid, built from project geometry alone (R/grid.R's
+# build_master_grid()) -- every connectivity input is aligned onto it via align_to_grid(),
+# independent of that input's own native grid/resolution.
 CONNECTIVITY_GRID_RESOLUTION_M <- 30
 CONNECTIVITY_LANDCOVER_SOURCE_RESOLUTION_M <- 10  # outputs/rf_hab_classifier/*_10m_clipped.tif
 
 CONNECTIVITY_RASTER_DIR <- file.path(RASTER_DIR, "connectivity")
-CONNECTIVITY_OUTPUT_DIR <- file.path(OUTPUTS_DIR, "connectivity")  # omniscape/circuitscape run dirs
-for (d in c(CONNECTIVITY_RASTER_DIR, CONNECTIVITY_OUTPUT_DIR)) {
+CONNECTIVITY_OUTPUT_DIR <- file.path(OUTPUTS_DIR, "connectivity")
+OMNISCAPE_OUTPUT_DIR    <- file.path(CONNECTIVITY_OUTPUT_DIR, "omniscape")
+CIRCUITSCAPE_OUTPUT_DIR <- file.path(CONNECTIVITY_OUTPUT_DIR, "circuitscape")
+for (d in c(CONNECTIVITY_RASTER_DIR, OMNISCAPE_OUTPUT_DIR, CIRCUITSCAPE_OUTPUT_DIR)) {
   if (!dir.exists(d)) dir.create(d, recursive = TRUE)
 }
 
 #################### LAND-COVER CLASS SCHEME (Airbus RF classifier) ####################
-# Mirrors config.py's RF_FINAL_CLASS_LABELS -- the delivered 7-class scheme from
-# outputs/rf_hab_classifier/airbus_landcover_classification_10m_clipped.tif. NOT the same scheme
-# as DW_HABITAT_CLASS_LABELS below (different classifier, different source imagery) -- do not mix
-# the two class-ID spaces.
+# Delivered 7-class scheme (Airbus classifier). NOT the same scheme as DW_HABITAT_CLASS_LABELS
+# below (different classifier) -- do not mix the two class-ID spaces.
 RF_FINAL_CLASS_LABELS <- c(
   `1` = "dense_forest", `2` = "bareground", `3` = "grassland", `4` = "cultivated",
   `5` = "shrubland", `6` = "water", `7` = "built"
 )
-# Species-agnostic groupings for the natural/cultivated/built/water fraction bands: grassland and
-# shrubland are NOT treated as lower-quality than forest -- all three are "natural" here.
+# Species-agnostic: grassland/shrubland are NOT lower-quality than forest -- all three are "natural".
 NATURAL_LC_CLASSES     <- c(1, 3, 5)  # dense_forest, grassland, shrubland
 CULTIVATED_LC_CLASSES  <- c(4)
 BUILT_LC_CLASSES        <- c(7)
 WATER_LC_CLASSES        <- c(6)
 BAREGROUND_LC_CLASSES   <- c(2)
 
-# class_id -> class_name mapping BEFORE the cultivated_a/cultivated_b collapse (mirrors config.py's
-# RF_CLASS_LABELS), needed only to remap accuracy_metrics_pixels.csv (computed against this
-# 8-class training scheme) onto the 7-class RF_FINAL_CLASS_LABELS delivered raster.
+# class_id -> class_name mapping BEFORE the cultivated_a/cultivated_b collapse -- used to remap
+# accuracy_metrics_pixels.csv (8-class training scheme) onto the 7-class delivered raster.
 RF_CLASS_REMAP <- c(`1` = 1, `2` = 2, `3` = 3, `4` = 4, `5` = 4, `6` = 5, `7` = 6, `8` = 7)
-RF_ACCURACY_PIXELS_PATH <- file.path(REPO_ROOT, "outputs", "rf_hab_classifier", "accuracy_metrics_pixels.csv")
+RF_ACCURACY_PIXELS_PATH <- file.path(RF_CLASSIFIER_DIR, "accuracy_metrics_pixels.csv")
 
-# Land-cover permeability crosswalk, one value per RF_FINAL_CLASS_LABELS class -- starting values,
-# not yet literature/expert justified. Species-agnostic: grassland/shrubland score the same as
-# dense_forest, not lower. Water given a neutral 0.40 rather than a dedicated water-resistance
-# scenario in this first pass -- revisit if Circuitscape results look water-body-sensitive.
+# Land-cover permeability crosswalk, one value per RF_FINAL_CLASS_LABELS class -- starting values.
 LANDCOVER_PERMEABILITY <- c(
   dense_forest = 0.95,
   grassland    = 0.90,
@@ -130,10 +129,9 @@ RESISTANCE_C_WEIGHTS <- c(
 )
 BUILT_FRACTION_RESISTANCE_FLOOR <- list(threshold = 0.50, floor = 150)
 
-# Neutral vs. riparian-facilitation scenario values feeding the Resistance-C riparian term --
-# built from riparian_buffer_30m.tif/riparian_natural_cover_30m.tif (step 06).
+# Neutral vs. riparian-facilitation scenario values for the Resistance-C riparian term (step 06 inputs).
 RIPARIAN_FACTOR_NEUTRAL <- 0.50
-RIPARIAN_FACTOR_FACILITATION <- 0.85  # starting value, within a 0.75-1.00 facilitation range
+RIPARIAN_FACTOR_FACILITATION <- 0.85  # starting value
 
 SOURCE_THRESHOLD_PRIMARY <- 0.30
 SOURCE_CONSERVATIVE_CRITERIA <- list(
@@ -142,10 +140,8 @@ SOURCE_CONSERVATIVE_CRITERIA <- list(
 )
 
 #################### HABITAT PATCHES + FOCAL NODES ####################
-# Core-habitat pixel rule -- deliberately the SAME thresholds as SOURCE_CONSERVATIVE_CRITERIA's
-# natural_fraction_min/settlement_pressure_max (0.70/0.25); kept as its own named constant since
-# the two serve conceptually different purposes (source strength vs. patch delineation) and could
-# diverge later.
+# Deliberately the SAME thresholds as SOURCE_CONSERVATIVE_CRITERIA (0.70/0.25); kept as its own
+# constant since the two serve different purposes and could diverge later.
 CORE_HABITAT_CRITERIA <- list(
   natural_fraction_min = 0.70, landcover_permeability_min = 0.70, settlement_pressure_max = 0.25
 )
@@ -153,10 +149,8 @@ CORE_HABITAT_CRITERIA <- list(
 # Patch-size tiers -- planning thresholds, not species home-range requirements.
 PATCH_TIER_THRESHOLDS_HA <- c(tier1_min = 50, tier2_min = 20, tier3_min = 5)
 
-# Focal-node candidate filter + per-site target counts. Target counts are the upper end of each
-# site's suggested range -- a starting cap on an initial selection, not an exact requirement.
-# "external_buffer" (patches outside all 4 named sites but within the buffer) has no cap, to avoid
-# artificially bounding the network at the analysis boundary.
+# Focal-node candidate filter + per-site target counts (starting caps, not exact requirements).
+# "external_buffer" has no cap, to avoid artificially bounding the network at the analysis boundary.
 FOCAL_NODE_MIN_AREA_HA <- 20
 FOCAL_NODE_TARGET_COUNTS <- c(enarau = 3, mbokishi = 3, corridor_p1 = 5, corridor_p2 = 5)
 
@@ -176,8 +170,8 @@ JULIA_BIN <- "C:/Users/harre/AppData/Roaming/R/data/R/JuliaCall/julia/1.9.4/juli
 JULIA_SCRIPTS_DIR <- file.path(REPO_ROOT, "scripts", "julia")
 JULIA_THREADS <- 4L
 
-# Omniscape.jl resolved to a very old default version with no GeoTIFF support; explicitly upgraded
-# to the newest version this Julia install allows. Circuitscape.jl needed no such pin.
+# Omniscape.jl resolved to a very old default with no GeoTIFF support; pinned to the newest
+# version this Julia install allows. Circuitscape.jl needed no such pin.
 OMNISCAPE_JL_VERSION <- "0.6.1"
 CIRCUITSCAPE_JL_VERSION <- "5.14.0"
 
@@ -187,8 +181,7 @@ CIRCUITSCAPE_JL_VERSION <- "5.14.0"
 OMNISCAPE_RADII_CELLS <- c(local = 50, primary = 100, broad = 200)
 OMNISCAPE_BLOCK_SIZE <- 3L
 
-# Omniscape run set: model x radius x source-threshold combinations -- see notes.md for what each
-# scenario represents.
+# Omniscape run set: model x radius x source-threshold combinations.
 OMNISCAPE_CONSERVATIVE_SOURCE_THRESHOLD <- 0.50
 OMNISCAPE_RUN_SET <- list(
   list(model = "A", radius = "primary", source = "primary"),
@@ -202,8 +195,7 @@ OMNISCAPE_RUN_SET <- list(
 #################### RASTER ALIGNMENT / PRESSURE INPUTS ####################
 # Road-class resistance-tendency crosswalk, keyed on the ACTUAL OSM `fclass` values found in
 # data/roads.gpkg (track=132, path=23, footway=10, unclassified=8, residential=1 -- no
-# paved/major roads exist in this AOI at all). Starting values, not yet literature/expert
-# justified.
+# paved/major roads exist in this AOI).
 ROAD_CLASS_SCORES <- c(
   residential  = 0.70,  # maintained, house-serving road
   unclassified = 0.40,  # OSM's own "unknown classification" semantics
@@ -211,23 +203,20 @@ ROAD_CLASS_SCORES <- c(
   path         = 0.10,  # foot-only, no vehicle access
   footway      = 0.10
 )
-ROAD_INFLUENCE_DISTANCE_M <- 100  # appropriate here since every road present is minor
+ROAD_INFLUENCE_DISTANCE_M <- 100  # minor roads only in this AOI
 
 RIPARIAN_BUFFER_M <- 30  # a universal buffer against high-resolution imagery for this AOI
 
-# Settlement-pressure blend -- heatmap already encodes distance-decay from built structures, so
-# built_fraction is a secondary, local-detail term only (30% weight), not a second independent
-# distance term (would double-count the heatmap's own decay).
+# Settlement-pressure blend -- heatmap already encodes distance-decay, so built_fraction is a
+# secondary local-detail term only (avoids double-counting the heatmap's own decay).
 SETTLEMENT_PRESSURE_WEIGHTS <- c(heatmap = 0.70, built_fraction = 0.30)
 
-# Robust-percentile clamp-normalize bounds, reused for every continuous raw-input scaling step in
-# this pipeline (slope_scaled, settlement-heatmap normalization) -- same treatment as
-# CONNECTIVITY_CONDITION_PERCENTILE_BOUNDS below (the Python-side notebook's equivalent constant).
+# Robust-percentile clamp-normalize bounds, reused for every continuous raw-input scaling step
+# (slope_scaled, settlement-heatmap normalization).
 CONNECTIVITY_PERCENTILE_BOUNDS <- c(5, 95)
 
 #################### DYNAMIC WORLD CLASS SCHEME ####################
-# There is no class 0 -- classify_habitat() never emits it. NoData is the raster's own -9999
-# sentinel (see NODATA_SENTINEL below), not a literal class value.
+# There is no class 0. NoData is the raster's own -9999 sentinel (see NODATA_SENTINEL below).
 DW_HABITAT_CLASS_LABELS <- c(
   `1` = "Woody", `2` = "Grassland", `3` = "Mixed natural", `4` = "Cropland",
   `5` = "Built", `6` = "Bare/degraded", `7` = "Water/flooded veg", `8` = "Uncertain"
@@ -237,8 +226,8 @@ CONVERSION_CLASSES <- c(4, 5, 6)
 EXCLUDED_CLASSES   <- c(7, 8)  # + raster NA
 
 #################### PERIODS ####################
-# Matches config.py's DW_PERIODS; the productivity/degradation PERIODS uses different year ranges
-# (Landsat baseline 1984-2000) and is NOT the same dict.
+# Matches config.py's DW_PERIODS; NOT the same dict as the productivity/degradation PERIODS
+# (different year ranges).
 DW_PERIODS <- list(
   baseline = c(2016, 2018),
   pre      = c(2019, 2021),
@@ -252,16 +241,14 @@ DW_PERIOD_TOKENS <- c(
 
 #################### RASTER / QA CONSTANTS ####################
 NODATA_SENTINEL <- -9999  # terra reads this as NA on load, not literal data.
-VALID_PIXEL_COVERAGE_MIN <- 0.80  # site-years below this show artificial
-                                  # patch breaks that inflate NP/PD/ED -- exclude from Level 2/3.
+VALID_PIXEL_COVERAGE_MIN <- 0.80  # below this, artificial patch breaks inflate NP/PD/ED
 
 #################### LANDSCAPE METRICS PARAMETERS ####################
 EDGE_DEPTH_CELLS <- 1  # package default (1 cell = 10m at this resolution)
 
 MOVING_WINDOW_RADII_M <- c(250, 500, 1000)
 MIN_PATCH_AREA_HA <- 1
-CORRIDOR_PROXIMITY_DECAY_M <- 2000    # linear decay-to-zero distance from corridor_p1 U corridor_p2;
-                                       # also reused by the connectivity patch scoring below
+CORRIDOR_PROXIMITY_DECAY_M <- 2000    # linear decay-to-zero distance from corridor_p1 U corridor_p2
 
 #################### CORRELATION / METRIC SETS ####################
 SELECTED_CLASS_METRICS <- c(
@@ -273,8 +260,7 @@ CORRELATION_FLAG_THRESHOLD <- 0.85
 
 #################### CONNECTIVITY VEGETATION CONDITION (RESISTANCE MODEL C INPUT) ####################
 # Mirrors config.py's CONNECTIVITY_CONDITION_* block -- built by
-# scripts/python/notebooks/connectivity_condition_composite.ipynb, downloaded from Drive into
-# RASTER_DIR/connectivity as condition_score_{wet,dry,current}_2022_2025_project.tif.
+# connectivity_condition_composite.ipynb, downloaded from Drive.
 CONNECTIVITY_CONDITION_EXPORT_FOLDER <- "CERK_Enarau_Objective4_ConditionComposite"
 CONNECTIVITY_CONDITION_PERIOD <- c(2022, 2025)
 CONNECTIVITY_CONDITION_SCORE_WEIGHTS <- c(
@@ -297,8 +283,7 @@ BARRIER_RESISTANCE_PERCENTILE <- 75
 BARRIER_FLOW_POTENTIAL_PERCENTILE <- 75
 BARRIER_SOURCE_PERCENTILE <- 25  # "low source strength" -- bottom quartile
 
-# Reference scenario for single-surface bottleneck/barrier/priority rasters -- consensus_score
-# itself still pools across all 6 Omniscape scenarios.
+# Reference scenario for single-surface rasters -- consensus_score still pools all 6 scenarios.
 PRIORITY_REFERENCE_SCENARIO <- "C_r100"
 
 PROTECTION_SOURCE_PERCENTILE <- 75
@@ -308,8 +293,7 @@ RESTORATION_CURRENT_PERCENTILE <- 75
 RESTORATION_RESISTANCE_PERCENTILE <- 50  # at/above median
 
 # Patch-level protection/restoration importance weights. Two inputs (patch_gap_reduction_potential,
-# implementation_feasibility) have no defined formula and are omitted rather than guessed -- see
-# notes.md's Connectivity section for how to interpret the resulting scores.
+# implementation_feasibility) have no defined formula and are omitted rather than guessed.
 PROTECTION_IMPORTANCE_WEIGHTS <- c(
   connectivity_contribution = 0.35,
   source_strength           = 0.25,
@@ -321,6 +305,5 @@ RESTORATION_IMPORTANCE_WEIGHTS <- c(
   current_or_flow_potential = 0.35,
   resistance_or_degradation = 0.25,
   proximity_to_focal_linkage = 0.20
-  # Weights above are NOT renormalized to sum to 1 -- this score is intentionally on a smaller
-  # scale than protection_importance; compare the two only in rank order, not by magnitude.
+  # NOT renormalized to sum to 1 -- compare to protection_importance by rank only, not magnitude.
 )

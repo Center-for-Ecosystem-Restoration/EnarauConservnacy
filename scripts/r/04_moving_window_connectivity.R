@@ -57,14 +57,12 @@ if (!is.null(SMOKE_TEST_SITE)) {
   radii_to_run <- MOVING_WINDOW_RADII_M
 }
 
-# lsm_l_pland dropped -- doesn't exist at landscape level, computed separately via terra::focal()
-# below. lsm_l_clumpy replaced by lsm_l_ai -- see the METRIC NOTE above.
+# lsm_l_pland/lsm_l_clumpy handled separately -- see the METRIC NOTE above.
 window_metrics <- c("lsm_l_ed", "lsm_l_ai", "lsm_l_pd")
 
-#' Odd window size (so there's a defined center pixel) -- rounds DOWN to the nearest odd size on
-#' the rare radius that comes out even (currently only 250m: 26 -> 25), not up. 500m (51) and
-#' 1000m (101) are already odd and untouched. This edge case was never exercised by the smoke
-#' test, which only ever ran the 500m radius.
+#' Odd window size (so there's a defined center pixel) -- rounds DOWN to the nearest odd size
+#' (currently only 250m: 26 -> 25 is affected; 500m/1000m are already odd). Never exercised by
+#' the smoke test, which only ever ran the 500m radius.
 compute_win_size <- function(radius_m) {
   win_size <- radius_m %/% 10 + 1
   if (win_size %% 2 == 0) win_size <- win_size - 1
@@ -82,17 +80,13 @@ run_window_lsm_for_period <- function(r_bin, radius_m) {
   elapsed_lsm <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
   # window_lsm() nests its result one level under a per-input-layer key (e.g. "layer_1") even for
-  # a single-layer landscape like ours (confirmed empirically 2026-07-28, landscapemetrics 2.2.1).
-  # Unwrap positionally, not by the literal string "layer_1", so downstream code can index metrics
-  # by name -- a second latent bug alongside the metric-name one above: top-level indexing like
-  # current_windows[["lsm_l_pland"]] would have silently returned NULL.
+  # a single-layer landscape -- unwrap positionally, not by the literal string, so downstream code
+  # can index metrics by name.
   metrics <- raw_result[[1]]
 
   t1 <- Sys.time()
-  # PLAND has no landscape-level definition (see the METRIC NOTE above) -- a focal mean of the
-  # binary raster is mathematically identical to "% of the window's classified area that's
-  # natural" (na.rm=TRUE excludes unclassified pixels from the denominator, matching PLAND's own
-  # convention documented in R/metrics.R). Scaled by 100 to match landscapemetrics' 0-100 range.
+  # Focal mean of the binary raster == "% of window's classified area that's natural" (na.rm=TRUE
+  # matches PLAND's own convention in R/metrics.R). Scaled by 100 to match landscapemetrics' range.
   metrics[["lsm_l_pland"]] <- terra::focal(r_bin, w = win, fun = "mean", na.rm = TRUE) * 100
   elapsed_focal <- as.numeric(difftime(Sys.time(), t1, units = "secs"))
 

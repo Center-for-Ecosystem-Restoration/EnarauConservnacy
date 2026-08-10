@@ -1,16 +1,13 @@
 # calculate_lsm() wrappers, correlation screen, and the entropy-metric pilot check
-# (Nowosad & Stepinski 2019 -- lsm_l_ent/lsm_l_mutinf as a cheap, weakly-correlated complexity axis).
+# (Nowosad & Stepinski 2019 -- lsm_l_ent/lsm_l_mutinf).
 #
 # IMPORTANT: PLAND/ED/AI/etc. are percentages of the VALID (classified, non-NA) landscape extent
-# within each site crop, not of the site's full nominal polygon area -- roughly 15% of Enarau's
-# polygon has no valid classification at all (~982 ha classified vs. 1161 ha polygon). A PLAND of
-# 89% for Enarau means "89% of the CLASSIFIED area," not "89% of Enarau." Always report both
-# figures (01_prepare_inputs.R's valid-pixel-coverage table gives the classified/polygon ratio).
+# within each site crop, not of the site's full nominal polygon area -- always report both figures
+# (see 01_prepare_inputs.R's valid-pixel-coverage table).
 
 #' Mask a project-wide raster to one site's polygon (crop + mask). Used by 03 (Level 2), which
-#' masks to site BEFORE computing metrics -- do NOT reuse for Level 3 (04/05), which computes on
-#' the full project extent first and clips only for reporting, since a patch/pinch-point can
-#' straddle a site boundary.
+#' masks BEFORE computing metrics -- do NOT reuse for Level 3 (04/05), which clips only for
+#' reporting since a patch/pinch-point can straddle a site boundary.
 mask_to_site <- function(r, site_vect) {
   if (inherits(site_vect, "sf")) site_vect <- terra::vect(site_vect)
   r_crop <- terra::crop(r, site_vect)

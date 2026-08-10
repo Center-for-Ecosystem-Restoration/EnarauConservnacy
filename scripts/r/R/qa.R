@@ -3,8 +3,6 @@
 # the NA fraction on habitat_class itself is the QA signal.
 
 #' Compute valid-pixel coverage for one habitat_class raster, restricted to one site's polygon.
-#' Uses read_habitat_raster() so literal 0 ("no classification/outside AOI") counts as invalid,
-#' not valid.
 #' @param habitat_class_path Path to a habitat_class GeoTIFF.
 #' @param site_vect A terra SpatVector (or sf object) of the site boundary, already in PROJECT_CRS.
 compute_valid_coverage <- function(habitat_class_path, site_vect) {
@@ -58,8 +56,7 @@ report_excluded_rows <- function(coverage_table, context_label) {
 }
 
 #' Objective 4 grid-alignment QA: verify every raster in `rasters` shares the master grid's exact
-#' CRS/extent/dims, and report each raster's finite-value range. Never fails silently -- surfaces
-#' NaN/Inf and geometry drift as a warning.
+#' CRS/extent/dims, and report each raster's finite-value range.
 check_connectivity_grid_alignment <- function(rasters, master_grid) {
   ref_ext <- as.vector(terra::ext(master_grid))
   ref_dim <- dim(master_grid)[1:2]

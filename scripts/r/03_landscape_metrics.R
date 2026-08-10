@@ -26,11 +26,9 @@ site_boundaries <- lapply(SITES$site_id, read_site_boundary)
 names(site_boundaries) <- SITES$site_id
 
 #' Runs class + binary + entropy metrics per site for one habitat_class raster. A site below the
-#' coverage threshold is NOT dropped -- its metrics are computed and every row is tagged
-#' `below_coverage_threshold = TRUE` instead, so it stays available for the plotting notebook to
-#' render distinctly (e.g. a flagged marker) rather than silently disappearing. Pooled analyses
-#' downstream in this script (the correlation screen, the metric-change summary) filter these
-#' rows back out -- treat them as "known but not trusted," not as validated data.
+#' coverage threshold is NOT dropped -- tagged `below_coverage_threshold = TRUE` instead, so the
+#' plotting notebook can render it distinctly. Pooled analyses downstream (correlation screen,
+#' metric-change summary) filter these rows back out.
 run_metrics_for_raster <- function(habitat_class_path, id_values, coverage_table = NULL) {
   r <- read_habitat_raster(habitat_class_path)
   r_full <- recode_full_habitat(r)
@@ -112,8 +110,8 @@ if (nrow(period_available) > 0) {
 }
 
 # bind_rows (not rbind) -- seasonal rows carry year/season columns, period rows carry period
-# instead; bind_rows() fills the other set's columns with NA (rbind() can't reconcile mismatched
-# schemas), which the metric-change summary below relies on via its !is.na(period) filter.
+# instead; bind_rows() fills mismatched columns with NA, which the metric-change summary below
+# relies on via its !is.na(period) filter.
 class_metrics <- dplyr::bind_rows(all_class)
 binary_metrics <- dplyr::bind_rows(all_binary)
 entropy_metrics <- dplyr::bind_rows(all_entropy)

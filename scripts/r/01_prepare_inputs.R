@@ -68,9 +68,8 @@ if (nrow(period_available) > 0) {
   message("=== Valid-pixel coverage QA: period composites (", nrow(period_available), "/", nrow(period_manifest), " available) ===")
   period_available_renamed <- period_available
   names(period_available_renamed)[names(period_available_renamed) == "class_file"] <- "habitat_class_file"
-  # id_cols = "period" matches what 03/04/06 look up by. Values are the 5 DW_PERIOD_TOKENS-style
-  # tokens, a different domain than the 3-valued "period" column in dw_area_by_class_by_site_period.csv
-  # (consumed separately in 02) -- don't join the two tables on this column name without checking.
+  # "period" here uses the 5 DW_PERIOD_TOKENS-style tokens -- a different domain than the 3-valued
+  # "period" column in dw_area_by_class_by_site_period.csv (used in 02). Don't join on name alone.
   names(period_available_renamed)[names(period_available_renamed) == "token"] <- "period"
   coverage_period <- compute_valid_coverage_table(period_available_renamed, id_cols = "period")
   readr::write_csv(coverage_period, file.path(TABLES_DIR, "landscape_valid_pixel_coverage_by_site_period.csv"))

@@ -3,11 +3,9 @@
 # within-site ranking. Per-site normalization would make each site's single largest patch always
 # score 1.0 locally regardless of true landscape-scale importance.
 #
-# This file used to also hold compute_patch_importance_score() and compute_linkage_priority_score()
-# (Objective 3's Euclidean patch-graph-derived scores), removed 2026-07-29 along with the rest of
-# that workflow (superseded by Objective 4's Circuitscape/Omniscape analysis, scripts/r/06-11_*.R).
-# normalize01() and distance_decay_score() below are unaffected -- both are reused by Objective 4's
-# R/consensus.R.
+# Objective 3's Euclidean patch-graph-derived scores formerly here were removed 2026-07-29,
+# superseded by Objective 4's Circuitscape/Omniscape analysis. normalize01() and
+# distance_decay_score() below are unaffected -- both are reused by Objective 4's R/consensus.R.
 
 #' Min-max normalize to [0, 1]. NA-safe (ignores NA in range calc; propagates NA through).
 normalize01 <- function(x) {
@@ -18,8 +16,8 @@ normalize01 <- function(x) {
   (x - rng[1]) / diff(rng)
 }
 
-#' Linear distance-decay score from a reference geometry: 1 inside/at the boundary, decaying
-#' linearly to 0 at `decay_m`.
+#' Linear distance-decay score from a reference geometry: 1 at the boundary, decaying to 0 at
+#' `decay_m`.
 distance_decay_score <- function(r_or_points, reference_sf, decay_m = CORRIDOR_PROXIMITY_DECAY_M) {
   ref_union <- sf::st_union(reference_sf)
   if (inherits(r_or_points, "SpatRaster")) {

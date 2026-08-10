@@ -47,8 +47,7 @@ natural_area_by_period <- area_period_tidy |>
   dplyr::group_by(site_id, site_name, period) |>
   dplyr::summarise(natural_area_ha = sum(area_ha), .groups = "drop")
 
-# site_area_ha needs reprojected boundary areas -- source geojsons are WGS84 lon/lat, so this
-# must reproject rather than read raw coordinate extents.
+# Source geojsons are WGS84 lon/lat -- must reproject before computing area, not read raw extents.
 site_areas_ha <- vapply(SITES$site_id, function(sid) {
   as.numeric(sum(sf::st_area(sf::st_transform(sf::st_read(SITES$path[SITES$site_id == sid], quiet = TRUE), PROJECT_CRS)))) / 10000
 }, numeric(1))

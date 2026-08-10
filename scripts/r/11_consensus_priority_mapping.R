@@ -23,7 +23,7 @@ source_primary <- read_connectivity_raster("source_strength_models_30m")[["sourc
 built_fraction <- read_connectivity_raster("built_fraction_30m")
 settlement_pressure_r <- read_connectivity_raster("settlement_pressure_30m")
 
-omniscape_dir <- file.path(CONNECTIVITY_OUTPUT_DIR, "omniscape")
+omniscape_dir <- OMNISCAPE_OUTPUT_DIR
 scenario_labels <- vapply(OMNISCAPE_RUN_SET, function(spec) {
   radius_cells <- OMNISCAPE_RADII_CELLS[[spec$radius]]
   sprintf("%s_r%d%s", spec$model, radius_cells, if (spec$source == "conservative") "_conservative_source" else "")
@@ -101,26 +101,22 @@ message("=== Patch-level importance scores ===")
 patch_table <- readr::read_csv(file.path(TABLES_DIR, "connectivity_patch_metrics_current.csv"), show_col_types = FALSE)
 patch_poly <- terra::vect(sf::st_read(file.path(VECTORS_DIR, "connectivity_habitat_patches_current.gpkg"), quiet = TRUE)[, "patch_id"])
 
-# mean/max Omniscape normalized_current per patch across all 6 scenarios; fills in columns step
-# 08 left blank for this step.
+# fills in the omniscape_current columns step 08 left blank
 omniscape_patch_stats <- Reduce(function(a, b) dplyr::left_join(a, b, by = "patch_id"), lapply(scenario_labels, function(lbl) {
   patch_current_stats(patch_poly, normalized_current_list[[lbl]], paste0("omniscape_current_", lbl))
 }))
-# Reference-scenario columns also get plain (non-suffixed) names; per-scenario detail is kept too.
 omniscape_patch_stats$mean_omniscape_current <- omniscape_patch_stats[[paste0("mean_omniscape_current_", PRIORITY_REFERENCE_SCENARIO)]]
 omniscape_patch_stats$max_omniscape_current <- omniscape_patch_stats[[paste0("max_omniscape_current_", PRIORITY_REFERENCE_SCENARIO)]]
 
-# Circuitscape all-to-one cumulative current per patch is the stepping-stone-position proxy (see
-# R/consensus.R's compute_protection_importance() for why this replaces Euclidean betweenness).
-all_to_one_current <- terra::rast(file.path(CONNECTIVITY_OUTPUT_DIR, "circuitscape", "all_to_one", "cs_all_to_one_cum_curmap.tif"))
+# stepping-stone-position proxy (see R/consensus.R)
+all_to_one_current <- terra::rast(file.path(CIRCUITSCAPE_OUTPUT_DIR, "all_to_one", "cs_all_to_one_cum_curmap.tif"))
 stepping_stone_stats <- patch_current_stats(patch_poly, all_to_one_current, "all_to_one_current")
 
 patch_table <- patch_table |>
   dplyr::left_join(omniscape_patch_stats, by = "patch_id") |>
   dplyr::left_join(stepping_stone_stats, by = "patch_id")
 
-# proximity_to_focal_linkage: linear decay from the corridor phases (this objective's target
-# linkage), via R/scoring.R's distance_decay_score() and CORRIDOR_PROXIMITY_DECAY_M.
+# proximity_to_focal_linkage: distance decay from the corridor phases (R/scoring.R)
 corridor_sites <- do.call(rbind, lapply(c("corridor_p1", "corridor_p2"), function(sid) {
   b <- read_site_boundary(sid)
   sf::st_sf(site_id = sid, geometry = sf::st_geometry(sf::st_union(b)))

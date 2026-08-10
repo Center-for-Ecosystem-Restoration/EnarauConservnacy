@@ -24,9 +24,7 @@ message(sprintf(
 ))
 
 message("=== Land-cover class fractions (10m -> 30m) ===")
-lc_path <- file.path(
-  REPO_ROOT, "outputs", "rf_hab_classifier", "airbus_landcover_classification_10m_clipped.tif"
-)
+lc_path <- file.path(RF_CLASSIFIER_DIR, "airbus_landcover_classification_10m_clipped.tif")
 fraction_stack <- class_fraction_stack(lc_path, master_grid)
 natural_fraction <- grouped_fraction(fraction_stack, NATURAL_LC_CLASSES)
 names(natural_fraction) <- "natural_fraction"
@@ -49,7 +47,7 @@ message("=== River proximity / riparian buffer ===")
 river_proximity_r <- feature_distance(CONNECTIVITY_INPUT_PATHS$streams, master_grid)
 names(river_proximity_r) <- "river_proximity_m"
 riparian_buffer_r <- riparian_buffer(river_proximity_r)
-# Riparian buffer is counted as "natural cover" only where natural_fraction >= 0.5 (dominance).
+# counted as natural cover only where natural_fraction >= 0.5 (dominance)
 riparian_natural_cover_r <- riparian_buffer_r * (natural_fraction >= 0.5)
 names(riparian_natural_cover_r) <- "riparian_natural_cover"
 

@@ -25,8 +25,7 @@ message("=== 09_run_omniscape: loading step-07 outputs ===")
 resistance_models <- read_connectivity_raster("resistance_models_30m")
 source_strength <- read_connectivity_raster("source_strength_models_30m")
 
-omniscape_dir <- file.path(CONNECTIVITY_OUTPUT_DIR, "omniscape")
-if (!dir.exists(omniscape_dir)) dir.create(omniscape_dir, recursive = TRUE)
+omniscape_dir <- OMNISCAPE_OUTPUT_DIR
 
 message("=== Staging per-scenario inputs + INI configs (skipping already-completed scenarios) ===")
 scenario_specs <- lapply(OMNISCAPE_RUN_SET, function(spec) {
@@ -46,8 +45,7 @@ scenario_specs <- lapply(OMNISCAPE_RUN_SET, function(spec) {
 
   if (!already_done) {
     if (!dir.exists(input_dir)) dir.create(input_dir, recursive = TRUE)
-    # Omniscape.jl reads whole single-band files, so each scenario's resistance/source band is
-    # written out individually rather than pointing at the multi-band stack.
+    # Omniscape.jl needs whole single-band files, not the multi-band stack.
     resistance_path <- file.path(input_dir, "resistance.tif")
     source_path <- file.path(input_dir, "source.tif")
     terra::writeRaster(resistance_models[[paste0("resistance_", spec$model)]], resistance_path, overwrite = TRUE)

@@ -9,9 +9,7 @@ Enarau Conservancy, Mbokishi Conservancy (used throughout as the intact referenc
 Corridor Phase 1, and Corridor Phase 2.
 
 Every map, statistic, and conclusion is meant to be traceable to a submitted dataset and a
-documented method — see `notes.md` for the full theoretical write-up, output-file glossary, and
-interpretation guidance behind every result summarized below. This README is the setup guide and
-at-a-glance map of the repo; read `notes.md` before writing the client report itself.
+documented method. This README is the setup guide and at-a-glance map of the repo.
 
 ## Stack
 
@@ -19,8 +17,7 @@ at-a-glance map of the repo; read `notes.md` before writing the client report it
   a shared GEE utility library this repo depends on but does not vendor.
 - **R** (`renv`) — landscape-fragmentation metrics (`landscapemetrics`) and connectivity modeling.
 - **Julia** — a system dependency of the connectivity step (Circuitscape.jl/Omniscape.jl), invoked
-  as a subprocess from R rather than through an R package (see the Connectivity section of
-  `notes.md` for why).
+  as a subprocess from R rather than through an R package.
 
 ## Setup
 
@@ -72,11 +69,19 @@ scripts.
 
 ### 4. Raw data not in this repo
 
-Two raw inputs are too large to check in and must be supplied separately (paths recorded in
-`outputs/rf_hab_classifier/model_metadata.json` once `hab_class.ipynb` has run): the 4-band 1 m
-Airbus aerial mosaic and its hand-digitized training-polygon GeoPackage, used only by
-`hab_class.ipynb`. Everything else `scripts/r/` needs (site boundaries, roads/streams/settlements,
-elevation/slope, the condition composite) is already in `data/`.
+Two raw inputs are too large to check in and must be supplied separately: the 4-band 1 m Airbus
+aerial mosaic, its hand-digitized training-polygon GeoPackage, and a cultivated-area override
+GeoPackage, all used only by `hab_class.ipynb`. Update `config.HAB_CLASS_RAW_DIR` in `config.py`
+to point at these files' location on your own machine before running that notebook — same
+machine-specific convention as `JULIA_BIN` above.
+
+Everything else `scripts/r/` needs for the connectivity analysis is either a small committed
+vector already in `data/` (site boundaries, roads/streams/settlements) or a raster generated
+in-repo and landing in gitignored `outputs/rasters/connectivity_inputs/` — elevation/slope
+(`connectivity_terrain_settlement_inputs.ipynb`, via GEE SRTM), the settlement heatmap (same
+notebook, a local KDE with no Earth Engine dependency), and the vegetation-condition composite
+(`connectivity_condition_composite.ipynb`). Run those notebooks (and download their Drive exports,
+where applicable — see each notebook's own "manual step" cells) before `06_prepare_connectivity_inputs.R`.
 
 ## config.py — key variables
 
@@ -91,10 +96,12 @@ check between the two). Notable variables:
 | `STUDY_AREA_BUFFER_M` | 150 m buffer applied to the union of all sites for every project-wide export |
 | `REFERENCE_SITE_ID` | `"mbokishi"` — the intact site every anomaly/cross-check comparison is relative to |
 | `DW_EXPORT_FOLDER`, `EXPORT_FOLDER`, `CONNECTIVITY_CONDITION_EXPORT_FOLDER` | **Google Drive folder names.** Earth Engine batch exports land in these folders inside the Drive account used to authenticate (`earthengine authenticate`) — not GCS, not local disk. Rasters/tables must be manually downloaded from Drive into the matching `outputs/rasters/...` / `outputs/tables/` subfolder before any R script or plotting notebook can read them |
-| `DW_HABITAT_THRESHOLDS`, `DW_HABITAT_CLASS_LABELS` | Dynamic World habitat-classification scheme and thresholds (calibrated against the RF classifier — see `notes.md`) |
+| `DW_HABITAT_THRESHOLDS`, `DW_HABITAT_CLASS_LABELS` | Dynamic World habitat-classification scheme and thresholds (calibrated against the RF classifier) |
 | `RF_CLASS_LABELS`, `RF_FINAL_CLASS_LABELS`, `RF_CLASS_REMAP` | The Airbus RF classifier's training vs. delivered class schemas |
-| `CONNECTIVITY_INPUT_PATHS` | Raw GIS inputs for the connectivity analysis, already in `data/` |
+| `CONNECTIVITY_INPUT_PATHS` | Raw GIS inputs for the connectivity analysis — vectors (roads/streams/settlements) in `data/`, rasters (elevation/slope/settlement heatmap/condition composite) in `CONNECTIVITY_INPUT_RASTER_DIR` |
+| `CONNECTIVITY_INPUT_RASTER_DIR` | `outputs/rasters/connectivity_inputs/` — landing folder for the connectivity analysis's generated raw rasters (too large to commit) |
 | `OUTPUT_DIRS` | Local landing directories under `outputs/` (gitignored — regenerated locally, not shipped in the repo) |
+| `HAB_CLASS_RAW_DIR` | Machine-specific directory for `hab_class.ipynb`'s raw inputs (Airbus mosaic, training polygons, cultivated-area overrides) — not in `data/`, must be set per machine |
 
 ## Notebooks & scripts, at a glance
 
@@ -107,6 +114,7 @@ check between the two). Notable variables:
 | `calibrate_habitat_thresholds.ipynb` | Local (non-Earth-Engine) numpy tool that re-runs `historical_change_detection.ipynb`'s classification logic against the RF classifier's output as ground truth, to iterate on `config.DW_HABITAT_THRESHOLDS` quickly. |
 | `productivity_degradation_landtrendr.ipynb` | Builds Landsat (1984–present), HLS (2015–present), and Sentinel-2 (2017–present) vegetation-index time series, plus two independent LandTrendr disturbance/recovery segmentations (dry-season NBR and wet-season MSAVI2), to track vegetation condition and degradation over time. |
 | `connectivity_condition_composite.ipynb` | Builds a single recent (2022–2025) vegetation-condition composite (productivity + moisture + inverse bare-soil) feeding the connectivity analysis's condition-adjusted resistance surface. |
+| `connectivity_terrain_settlement_inputs.ipynb` | Generates the connectivity analysis's elevation/slope (SRTM via GEE) and settlement-heatmap (local KDE, no Earth Engine) raw inputs in-repo, replacing the originally hand-produced/QGIS versions. |
 
 ### Python plotting notebooks — `scripts/python/plotting/`
 
@@ -141,9 +149,11 @@ and produces the charts in `outputs/plots/`.
 
 ## Outputs
 
-`outputs/` is gitignored and generated locally: `outputs/rasters/`, `outputs/tables/`,
+`outputs/` is gitignored and generated locally: `outputs/rasters/` (including
+`connectivity_inputs/`, the connectivity analysis's raw-raster landing folder), `outputs/tables/`,
 `outputs/vectors/`, `outputs/plots/`, and `outputs/connectivity/` (the many-file-per-run
-Omniscape/Circuitscape outputs). Python notebooks export rasters/tables to Google Drive (see the
-export-folder variables above) rather than writing here directly — download those manually before
-running any script that reads from `outputs/`. See `notes.md` for a full glossary of every output
-file and how to interpret it.
+Omniscape/Circuitscape outputs). Most Python notebooks export rasters/tables to Google Drive (see
+the export-folder variables above) rather than writing here directly — download those manually
+before running any script that reads from `outputs/`; the exception is the settlement heatmap,
+which `connectivity_terrain_settlement_inputs.ipynb` writes directly to `outputs/` with no Drive
+round-trip.

@@ -3,9 +3,7 @@
 # layers it writes to CONNECTIVITY_RASTER_DIR; nothing here reads a raw input directly.
 
 #' Weighted sum of a class_fraction_stack()'s per-class bands against a named lookup of
-#' class-name -> value (e.g. LANDCOVER_PERMEABILITY) -- the shared pattern behind both
-#' landcover_permeability() and landcover_confidence()
-#' (sum(class_fraction_i * class_value_i)).
+#' class-name -> value (e.g. LANDCOVER_PERMEABILITY): sum(class_fraction_i * class_value_i).
 weighted_class_layer <- function(fraction_stack, values) {
   class_names <- names(values)
   band_names <- paste0(class_names, "_fraction")
@@ -26,9 +24,8 @@ landcover_permeability <- function(fraction_stack) {
 
 #' Build a class_name -> confidence-value lookup from accuracy_metrics_pixels.csv (computed
 #' against the 8-class training scheme, RF_CLASS_REMAP'd down to the 7-class delivered scheme).
-#' Where two training classes collapse into one delivered class (cultivated_a/cultivated_b ->
-#' cultivated), the two classes' users_accuracy values are averaged, weighted by `support` --
-#' matches how the delivered raster itself pools their pixels, rather than a plain unweighted mean.
+#' Where two training classes collapse into one delivered class, users_accuracy is averaged,
+#' weighted by `support`, matching how the delivered raster pools their pixels.
 build_landcover_confidence_crosswalk <- function(accuracy_path = RF_ACCURACY_PIXELS_PATH) {
   acc <- utils::read.csv(accuracy_path, stringsAsFactors = FALSE)
   acc$final_class_id <- RF_CLASS_REMAP[as.character(acc$class_id)]
@@ -50,7 +47,7 @@ landcover_confidence <- function(fraction_stack, confidence_crosswalk) {
 }
 
 #' permeability -> resistance: 1 + (rmax - 1) * (1 - permeability)^gamma.
-#' gamma = 1 (linear) is the production default; higher gamma is a sensitivity-test variant only.
+#' gamma = 1 (linear) is the production default; higher gamma is a sensitivity-test variant.
 to_resistance <- function(permeability, rmax, gamma = 1) {
   permeability <- clamp01(permeability)
   1 + (rmax - 1) * (1 - permeability)^gamma
@@ -95,7 +92,7 @@ build_resistance_models <- function(landcover_perm, human_perm, road_perm, condi
 riparian_factor_scenario <- function(riparian_natural_cover, scenario = c("neutral", "facilitation")) {
   scenario <- match.arg(scenario)
   if (scenario == "neutral") {
-    out <- riparian_natural_cover * 0 + RIPARIAN_FACTOR_NEUTRAL  # constant raster, same NA mask
+    out <- riparian_natural_cover * 0 + RIPARIAN_FACTOR_NEUTRAL
   } else {
     out <- terra::ifel(riparian_natural_cover == 1, RIPARIAN_FACTOR_FACILITATION, RIPARIAN_FACTOR_NEUTRAL)
   }

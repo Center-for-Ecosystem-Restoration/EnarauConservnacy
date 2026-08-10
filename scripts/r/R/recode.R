@@ -1,12 +1,10 @@
 # Derived-raster recodes from a habitat_class raster. Expect values 1-8 with NA elsewhere if
-# loaded via read_habitat_raster() (which already substitutes literal 0 -> NA). The explicit
-# "0 -> NA" mappings below are defense-in-depth for callers passing a raw, not-yet-normalized raster.
+# loaded via read_habitat_raster(). The explicit "0 -> NA" mappings below are defense-in-depth
+# for callers passing a raw, not-yet-normalized raster.
 
 #' Full habitat-class raster for composition/fragmentation metrics: masks out water/flooded
 #' vegetation (7) and uncertain (8), keeping classes 1-6.
 recode_full_habitat <- function(r) {
-  # terra::classify()'s default (others = NULL) leaves unlisted values (here, classes 1-6)
-  # unchanged, so no `others=` argument is needed.
   out <- terra::classify(r, rcl = matrix(c(0, NA, 7, NA, 8, NA), ncol = 2, byrow = TRUE))
   names(out) <- "habitat_class"
   out
@@ -26,18 +24,13 @@ make_natural_binary <- function(r) {
 #' Current-period binary natural-habitat raster, reconciled against Objective 1's own
 #' natural_habitat_mask export.
 #'
-#' natural_habitat_mask is 1/NA-only (built via .selfMask()), so it can't represent "0 = converted
-#' but valid" and can't be a drop-in replacement for make_natural_binary(). Instead: build the
-#' 0-class from a plain reclass of the current habitat_class raster, then DEMOTE any pixel the
-#' plain reclass called "natural" (1) to NA wherever Objective 1's stricter QA gate
-#' (top1_prob/valid_obs_count, see DW_CONNECTIVITY_THRESHOLDS in config.py) does not also confirm
-#' it as natural -- never promote a pixel the plain reclass called 0 or NA.
-#'
-#' Verify the two rasters agree on >95% of valid pixels (see 01_prepare_inputs.R) -- a bigger gap
-#' means the QA gate is dropping more than expected and needs investigation.
+#' natural_habitat_mask is 1/NA-only, so it can't represent "0 = converted but valid" and can't be
+#' a drop-in replacement for make_natural_binary(). Instead: build the 0-class from a plain
+#' reclass of the current habitat_class raster, then DEMOTE any pixel the plain reclass called
+#' "natural" (1) to NA wherever Objective 1's stricter QA gate does not also confirm it as natural
+#' -- never promote a pixel the plain reclass called 0 or NA.
 build_current_binary_natural <- function(current_class_r, natural_habitat_mask_r) {
   plain <- make_natural_binary(current_class_r)
-  # natural_habitat_mask_r is 1/NA; align it to plain's grid before comparing.
   mask_aligned <- terra::resample(natural_habitat_mask_r, plain, method = "near")
   downgrade <- is.na(mask_aligned) & (plain == 1)
   out <- terra::ifel(downgrade, NA, plain)
@@ -45,8 +38,7 @@ build_current_binary_natural <- function(current_class_r, natural_habitat_mask_r
   out
 }
 
-#' % of valid (non-NA) pixels where `plain` and `reconciled` agree. Prints a PASS/INVESTIGATE
-#' message rather than failing silently.
+#' % of valid (non-NA) pixels where `plain` and `reconciled` agree.
 check_mask_reuse_agreement <- function(plain, reconciled) {
   p <- terra::values(plain, na.rm = FALSE)
   r <- terra::values(reconciled, na.rm = FALSE)

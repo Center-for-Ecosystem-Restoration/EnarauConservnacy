@@ -1,10 +1,9 @@
 # Consensus mapping, bottleneck/barrier candidates, and protection/restoration priority surfaces.
 # Requires step 07's resistance/source-strength rasters and step 09-10's Omniscape/Circuitscape
-# outputs to already exist -- no new resistance/permeability logic here.
+# outputs to already exist.
 
-#' The raw value at the `pct`-th percentile of `r` (landscape-wide, not per-site) -- the building
-#' block for every "high"/"low X" rule in this file, since these thresholds are relative to the
-#' landscape's own distribution rather than one fixed universal value.
+#' Raw value at the `pct`-th percentile of `r`, landscape-wide -- used as the relative threshold
+#' for every "high"/"low X" rule in this file.
 percentile_value <- function(r, pct) {
   as.numeric(terra::global(r, fun = quantile, probs = pct / 100, na.rm = TRUE)[1, 1])
 }
@@ -12,15 +11,13 @@ percentile_value <- function(r, pct) {
 above_percentile <- function(r, pct) r >= percentile_value(r, pct)
 below_percentile <- function(r, pct) r <= percentile_value(r, pct)
 
-#' Per-scenario high-current mask: normalized_current >= its own HIGH_CURRENT_PERCENTILE-th
-#' percentile.
+#' Per-scenario high-current mask: normalized_current >= its own HIGH_CURRENT_PERCENTILE.
 high_current_mask <- function(normalized_current_r) {
   above_percentile(normalized_current_r, HIGH_CURRENT_PERCENTILE)
 }
 
-#' Consensus score across scenarios: count of scenarios in which each cell clears its own
-#' high-current mask. `normalized_current_list` is a named list of
-#' normalized_current SpatRasters, one per Omniscape scenario.
+#' Consensus score: count of scenarios in which each cell clears its own high-current mask.
+#' `normalized_current_list` is a named list of normalized_current SpatRasters, one per scenario.
 consensus_score <- function(normalized_current_list) {
   masks <- lapply(normalized_current_list, high_current_mask)
   out <- Reduce(`+`, lapply(masks, function(m) terra::ifel(m, 1, 0)))
@@ -28,9 +25,8 @@ consensus_score <- function(normalized_current_list) {
   out
 }
 
-#' Moderate- and high-confidence bottleneck candidates, from ONE reference scenario's
-#' normalized_current + the shared resistance surface, cross-checked against the multi-scenario
-#' consensus_score for the high-confidence variant.
+#' Moderate- and high-confidence bottleneck candidates, from one reference scenario's
+#' normalized_current + resistance, cross-checked against consensus_score for the HC variant.
 bottleneck_candidates <- function(normalized_current_r, resistance_r, consensus_r) {
   moderate <- above_percentile(normalized_current_r, BOTTLENECK_CURRENT_PERCENTILE) &
     above_percentile(resistance_r, BOTTLENECK_RESISTANCE_PERCENTILE)
@@ -42,8 +38,7 @@ bottleneck_candidates <- function(normalized_current_r, resistance_r, consensus_
   out
 }
 
-#' Barrier candidates: high resistance AND high flow potential (i.e. current "wants" to flow
-#' there under uniform resistance) AND low source strength.
+#' Barrier candidates: high resistance AND high flow potential AND low source strength.
 barrier_candidates <- function(resistance_r, flow_potential_r, source_r) {
   out <- above_percentile(resistance_r, BARRIER_RESISTANCE_PERCENTILE) &
     above_percentile(flow_potential_r, BARRIER_FLOW_POTENTIAL_PERCENTILE) &
@@ -53,11 +48,7 @@ barrier_candidates <- function(resistance_r, flow_potential_r, source_r) {
   out
 }
 
-#' Protection priority: high source strength AND high current AND low resistance. A third
-#' criterion -- conversion or settlement pressure nearby or increasing -- is a qualitative
-#' field/monitoring judgment with no rasterizable formula; `settlement_pressure_r` is accepted so
-#' callers can report it alongside the binary candidate layer for manual review, not folded into
-#' the boolean rule itself.
+#' Protection priority: high source strength AND high current AND low resistance.
 protection_priority <- function(source_r, current_r, resistance_r) {
   out <- above_percentile(source_r, PROTECTION_SOURCE_PERCENTILE) &
     above_percentile(current_r, PROTECTION_CURRENT_PERCENTILE) &
@@ -67,8 +58,8 @@ protection_priority <- function(source_r, current_r, resistance_r) {
   out
 }
 
-#' Restoration priority: high current/flow potential AND moderate-high resistance AND NOT
-#' already hard built conversion (built_fraction < BUILT_FRACTION_RESISTANCE_FLOOR$threshold).
+#' Restoration priority: high current/flow potential AND moderate-high resistance AND not
+#' already built (built_fraction < BUILT_FRACTION_RESISTANCE_FLOOR$threshold).
 restoration_priority <- function(current_or_flow_r, resistance_r, built_fraction_r) {
   out <- above_percentile(current_or_flow_r, RESTORATION_CURRENT_PERCENTILE) &
     above_percentile(resistance_r, RESTORATION_RESISTANCE_PERCENTILE) &
@@ -78,9 +69,7 @@ restoration_priority <- function(current_or_flow_r, resistance_r, built_fraction
   out
 }
 
-#' Mean/max of a current-flow raster within each patch (no buffer) -- reuses R/patches.R's
-#' mean_within_patches() pattern but also computes max, since the patch attribute table needs
-#' both mean_omniscape_current and max_omniscape_current.
+#' Mean/max of a current-flow raster within each patch (no buffer).
 patch_current_stats <- function(patch_poly, current_r, prefix) {
   mean_vals <- terra::extract(current_r, patch_poly, fun = mean, na.rm = TRUE, ID = FALSE)[[1]]
   max_vals <- terra::extract(current_r, patch_poly, fun = max, na.rm = TRUE, ID = FALSE)[[1]]
@@ -90,9 +79,7 @@ patch_current_stats <- function(patch_poly, current_r, prefix) {
 }
 
 #' Patch-level protection_importance_score, using normalize01() from R/scoring.R.
-#' `stepping_stone_position` proxy: mean Circuitscape all-to-one current within the patch (how
-#' much network current passes through it) -- replaces Objective 3's Euclidean-graph betweenness
-#' now that this objective's real current-flow output is available.
+#' `stepping_stone_position` proxy: mean Circuitscape all-to-one current within the patch.
 compute_protection_importance <- function(connectivity_contribution, source_strength, core_area_ha,
                                            stepping_stone_position, settlement_pressure) {
   w <- PROTECTION_IMPORTANCE_WEIGHTS
@@ -103,9 +90,8 @@ compute_protection_importance <- function(connectivity_contribution, source_stre
     w[["inverse_human_pressure"]] * (1 - normalize01(settlement_pressure))
 }
 
-#' Patch-level restoration_importance_score -- see RESTORATION_IMPORTANCE_WEIGHTS' own comment
-#' for why this is on a smaller scale than protection_importance (two components with no defined
-#' formula are omitted, not renormalized in).
+#' Patch-level restoration_importance_score (see RESTORATION_IMPORTANCE_WEIGHTS for why it's on a
+#' smaller scale than protection_importance).
 compute_restoration_importance <- function(current_or_flow_potential, resistance, proximity_to_focal_linkage) {
   w <- RESTORATION_IMPORTANCE_WEIGHTS
   w[["current_or_flow_potential"]] * normalize01(current_or_flow_potential) +

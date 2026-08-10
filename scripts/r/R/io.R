@@ -1,8 +1,6 @@
 # Input manifest for Objective 1's manually-downloaded Dynamic World raster exports
-# (DW_INPUT_RASTER_DIR, see 00_config.R). Local filenames drop each Drive export cell's filename
-# prefix (seasonal_categorical_/conversion_pressure_/connectivity_inputs_/transitions_), so every
-# file starts directly at "DW_", matching the band/class scheme in
-# scripts/python/notebooks/historical_change_detection.ipynb.
+# (DW_INPUT_RASTER_DIR, see 00_config.R). Local filenames drop each Drive export cell's prefix,
+# so every file starts directly at "DW_", matching scripts/python/notebooks/historical_change_detection.ipynb.
 
 expand_seasonal_manifest <- function() {
   years <- 2016:2025
@@ -73,15 +71,10 @@ check_inputs_present <- function(strict = TRUE) {
 #' Read a habitat_class raster, verify it matches the expected 1-8 class scheme, and normalize
 #' its NoData representation to real NA.
 #'
-#' Every export carries a correctly-registered `-9999` GDAL NoData tag that terra applies
-#' silently on read -- literal -9999 should never appear in terra::values() (checking via
-#' terra::NAflag() instead is misleading: it reports a user-set override, not whether the
-#' embedded tag is honored). Separately, rasters exported after a terminal `.clip(project_geom)`
-#' also carry a literal `0` fill outside the true AOI polygon but inside the export's rectangular
-#' bounding box (an upstream eetools export bug, since fixed). For habitat_class this is harmless
-#' to detect: `0` is never a real class (1-8), so it's unambiguous regardless of position. This
-#' function converts `0 -> NA` immediately so downstream consumers can rely on ordinary is.na()
-#' semantics -- do not read habitat_class rasters via bare terra::rast() elsewhere.
+#' Some exports carry a literal `0` fill outside the true AOI polygon but inside the export's
+#' rectangular bounding box (an upstream eetools export bug, since fixed); `0` is never a real
+#' class (1-8), so this converts it to NA immediately. Always read habitat_class rasters through
+#' this function, not bare terra::rast().
 read_habitat_raster <- function(path) {
   if (!file.exists(path)) stop("Habitat raster not found: ", path)
   r <- terra::rast(path)
@@ -103,8 +96,7 @@ read_habitat_raster <- function(path) {
   r
 }
 
-#' Read the 9-band period probability/derived stack and apply DW_STACK_BAND_NAMES. Unlike
-#' habitat_class/pressure_class, these rasters don't have the exterior-fringe defect.
+#' Read the 9-band period probability/derived stack and apply DW_STACK_BAND_NAMES.
 read_period_stack <- function(path) {
   if (!file.exists(path)) stop("Period stack raster not found: ", path)
   r <- terra::rast(path)
@@ -124,9 +116,8 @@ read_site_boundary <- function(site_id) {
 }
 
 # Reconstruction of the notebook's `project_geom` (union of the 4 SITES polygons, buffered by
-# STUDY_AREA_BUFFER_M), used to work around the pressure_class exterior-fringe defect. This is a
-# PLANAR buffer (sf::st_buffer() in EPSG:32736) vs GEE's GEODESIC `.buffer(150, maxError=10)` --
-# expect a sub-pixel discrepancy at the boundary, immaterial at 10m resolution.
+# STUDY_AREA_BUFFER_M). This is a PLANAR buffer (EPSG:32736) vs GEE's GEODESIC buffer -- expect a
+# sub-pixel discrepancy at the boundary, immaterial at 10m resolution.
 .project_geom_cache <- new.env(parent = emptyenv())
 
 #' Build (or return the cached) reconstructed project_geom polygon, as an sf object in
@@ -144,9 +135,7 @@ project_geom_vect <- function(force_refresh = FALSE) {
   terra::vect(build_project_geom(force_refresh))
 }
 
-#' Read a transition_code raster (from_class*10 + to_class, valid codes are both digits 1-8,
-#' i.e. 11-88) and validate it. Built via arithmetic on two already-clipped habitat_class images,
-#' which avoids the exterior-fringe defect -- no clip needed here.
+#' Read a transition_code raster (from_class*10 + to_class, valid codes 11-88) and validate it.
 read_transition_raster <- function(path) {
   if (!file.exists(path)) stop("Transition raster not found: ", path)
   r <- terra::rast(path)

@@ -6,15 +6,12 @@
 # Depends on 02's landscape_net_natural_change_by_site.csv; run 02 first. Skips gracefully (with
 # a message) if upstream tables, including Objective 2's LandTrendr CSVs, aren't present yet.
 #
-# This script previously also built linkage_priority_score.tif/candidate_linkage_areas.gpkg from
-# a Euclidean patch-graph output (betweenness, patch_importance_score). That workflow
-# (05_patch_importance_graph.R, R/patch_graph.R) was removed 2026-07-29, superseded by Objective
-# 4's real Circuitscape/Omniscape current-flow analysis (scripts/r/06-11_*.R). The cross-check
-# below is independent of that removed workflow.
+# (Previously also built linkage-priority outputs from a Euclidean patch-graph workflow, removed
+# 2026-07-29 in favor of Objective 4's Circuitscape/Omniscape analysis -- unrelated to the
+# cross-check below.)
 #
-# Figures are not generated here -- plotting lives in
-# scripts/python/plotting/landscape_metrics.ipynb (pandas/matplotlib/seaborn), reading this
-# script's and 03's table outputs from outputs/tables/.
+# Figures are not generated here -- see scripts/python/plotting/landscape_metrics.ipynb, which
+# reads this script's and 03's table outputs from outputs/tables/.
 
 source("00_config.R")
 source("R/io.R")
@@ -52,10 +49,9 @@ if (file.exists(net_natural_change_path) && file.exists(nbr_event_path) && file.
       by = "site_id"
     )
 
-  # Caveat check: does Enarau's natural-habitat-expansion signal also appear at Mbokishi (the
-  # untouched reference site)? If so, it's more likely regional/rainfall-driven than
-  # Enarau-specific conservation activity -- a site *diverging* from Mbokishi is the more
-  # defensible localized-effect claim.
+  # Caveat: if Enarau's natural-habitat signal also appears at Mbokishi (untouched reference site),
+  # it's likely regional/rainfall-driven rather than Enarau-specific -- divergence from Mbokishi is
+  # the more defensible localized-effect claim.
   mbokishi_change <- crosscheck$net_change_baseline_to_current_pct_of_site[crosscheck$site_id == "mbokishi"]
   crosscheck$diverges_from_mbokishi_pct_points <- crosscheck$net_change_baseline_to_current_pct_of_site - mbokishi_change
   crosscheck$caveat <- ifelse(

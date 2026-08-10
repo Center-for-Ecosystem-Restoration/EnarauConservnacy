@@ -1,13 +1,9 @@
 # Step 08 (Objective 4): habitat patches + focal nodes. RUN AS: cd scripts/r && Rscript
 # 08_habitat_patches_focal_nodes.R.
 #
-# Patches come from the NEW land-cover-derived core-habitat mask, not a reuse of Objective 3's
-# Dynamic-World-based patches. No igraph Euclidean patch-graph is built here -- that approach
-# (formerly 05_patch_importance_graph.R) was removed entirely, superseded by the resistance-based
-# Circuitscape/Omniscape current-flow measures produced later in this pipeline. "Stepping-stone
-# position"/"connectivity contribution" scores are computed in step 11 from actual current-flow
-# output once it exists -- mean_omniscape_current/max_omniscape_current are therefore NOT in this
-# script's patch table; step 11 joins them in after Omniscape (step 09) has run.
+# Patches come from the land-cover-derived core-habitat mask, not Objective 3's Dynamic-World
+# patches. mean_omniscape_current/max_omniscape_current are NOT in this script's patch table --
+# step 11 joins them in after Omniscape (step 09) has run.
 
 source("00_config.R")
 source("R/io.R")
@@ -53,8 +49,7 @@ names(patch_metrics_wide)[names(patch_metrics_wide) == "shape_mn"] <- "shape_ind
 patch_enn <- calculate_patch_nearest_neighbor(patch_poly)
 
 patch_sf <- sf::st_as_sf(patch_poly)
-# sf::st_perimeter() needs the optional lwgeom package (not in renv.lock) -- st_length() on the
-# polygon boundary is an equivalent GEOS-only alternative that needs no extra dependency.
+# st_perimeter() needs lwgeom (not in renv.lock); st_length() on the boundary is a GEOS-only equivalent.
 perimeter_m <- data.frame(
   patch_id = patch_sf$patch_id,
   perimeter_m = as.numeric(units::drop_units(sf::st_length(sf::st_boundary(patch_sf))))

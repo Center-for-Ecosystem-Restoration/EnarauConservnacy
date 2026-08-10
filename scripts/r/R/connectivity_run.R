@@ -1,27 +1,17 @@
-# Orchestration for Circuitscape.jl/Omniscape.jl runs, called as a Julia SUBPROCESS (see
-# 00_config.R's "JULIA / CIRCUITSCAPE.JL / OMNISCAPE.JL" section for why -- circuitscaper's own R
-# API is unusable on R 4.5+ due to an unresolved RCall.jl bug). No connectivity-modeling logic
-# lives here -- these functions only write INI config text, invoke `julia.exe` as a subprocess,
-# and hand back the output directory for the caller to read with terra::rast().
+# Orchestration for Circuitscape.jl/Omniscape.jl runs, called as a Julia SUBPROCESS (circuitscaper's
+# own R API is unusable on R 4.5+, see 00_config.R). Writes INI config text, invokes `julia.exe`,
+# and hands back the output directory for the caller to read with terra::rast().
 
-#' Windows paths from normalizePath()/file.path() can contain backslashes; both Julia's INI
-#' parser and GDAL are happier with forward slashes, and this project's own smoke test (2026-07-29)
-#' confirmed forward-slash absolute paths work reliably.
+#' Convert backslashes to forward slashes -- Julia's INI parser and GDAL expect the latter.
 to_unix_path <- function(path) gsub("\\\\", "/", path)
 
-#' TRUE/FALSE -> "True"/"False" -- Circuitscape.jl/Omniscape.jl's INI parser expects
-#' Python-configparser-style capitalized booleans (confirmed via the 2026-07-29 smoke test).
+#' TRUE/FALSE -> "True"/"False" for Circuitscape.jl/Omniscape.jl's configparser-style INI.
 ini_bool <- function(x) if (isTRUE(x)) "True" else "False"
 
-#' Write an Omniscape.jl INI config file (keys per Omniscape.jl's documented options).
+#' Write an Omniscape.jl INI config file.
 #'
-#' `project_dir` (Omniscape's own `project_name`) must NOT already exist when the run starts --
-#' Omniscape.jl silently auto-increments to a numbered sibling (`project_1`, `project_2`, ...)
-#' instead of reusing/overwriting an existing directory, silently orphaning results if the caller
-#' already created that same directory (e.g. to hold input rasters). Keep input rasters in a
-#' SEPARATE directory from `project_dir` -- see 09_run_omniscape.R's `inputs/`/`output/` split --
-#' and treat `project_dir`'s existence as this scenario's own "already run" signal for idempotent
-#' re-runs.
+#' `project_dir` must NOT already exist -- Omniscape.jl silently auto-increments to a numbered
+#' sibling instead of reusing it, orphaning results. Keep input rasters in a separate directory.
 #' @return The config file path (invisibly).
 write_omniscape_config <- function(resistance_path, source_path, radius_cells, project_dir,
                                     config_path,
@@ -62,8 +52,7 @@ write_omniscape_config <- function(resistance_path, source_path, radius_cells, p
   invisible(config_path)
 }
 
-#' Write a Circuitscape.jl INI config file (keys per Circuitscape.jl's documented options).
-#' `scenario` is "pairwise" or "all-to-one" (Circuitscape.jl's own terms).
+#' Write a Circuitscape.jl INI config file. `scenario` is "pairwise" or "all-to-one".
 #' @return The config file path (invisibly).
 write_circuitscape_config <- function(habitat_path, point_path, output_base,
                                        scenario = c("pairwise", "all-to-one"),
@@ -97,7 +86,7 @@ write_circuitscape_config <- function(habitat_path, point_path, output_base,
 }
 
 #' Run one of the two scripts/julia/*.jl entry points as a subprocess against `config_path`.
-#' Returns a one-row data.frame suitable for accumulating into a run-manifest table.
+#' Returns a one-row data.frame for accumulating into a run-manifest table.
 #' @param tool "omniscape" or "circuitscape".
 run_julia_connectivity <- function(tool = c("omniscape", "circuitscape"), config_path,
                                     threads = JULIA_THREADS, label = basename(dirname(config_path))) {
