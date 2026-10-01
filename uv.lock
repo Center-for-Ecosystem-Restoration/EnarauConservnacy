@@ -601,13 +601,15 @@ wheels = [
 [[package]]
 name = "eetools"
 version = "0.2.0"
-source = { git = "https://github.com/harrellgis/gee_utils.git?tag=v0.2.0#7cc55a8cbb2c726d3ea2339319b74c775aafd3de" }
+source = { git = "https://github.com/harrellgis/gee_utils.git?rev=ac7704a8be53b294dcc469458e01d9e3ee6c536a#ac7704a8be53b294dcc469458e01d9e3ee6c536a" }
 dependencies = [
     { name = "earthengine-api" },
     { name = "geopandas" },
+    { name = "google-cloud-storage" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "python-dotenv" },
     { name = "seaborn" },
     { name = "shapely" },
 ]
@@ -631,6 +633,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "rasterio" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "seaborn" },
 ]
 
@@ -642,7 +645,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "eetools", extras = ["notebook"], git = "https://github.com/harrellgis/gee_utils.git?tag=v0.2.0" },
+    { name = "eetools", extras = ["notebook"], git = "https://github.com/harrellgis/gee_utils.git?rev=ac7704a8be53b294dcc469458e01d9e3ee6c536a" },
     { name = "geopandas", specifier = ">=1.1.4" },
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "mapclassify", specifier = ">=2.10.0" },
@@ -651,6 +654,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "rasterio", specifier = ">=1.5.0" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
+    { name = "scipy", specifier = ">=1.18.0" },
     { name = "seaborn", specifier = ">=0.13.0" },
 ]
 

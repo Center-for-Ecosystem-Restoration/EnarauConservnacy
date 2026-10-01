@@ -19,7 +19,9 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-eetools = { git = "https://github.com/harrellgis/gee_utils.git", tag = "v0.2.0" }
+# Pinned to a main commit past v0.2.0: needs eetools.utils.get_available_window/get_date_window
+# (added 4063fd9) and the post-v0.2.0 LandTrendr/medoid bug fixes. Re-pin to a tag once one is cut.
+eetools = { git = "https://github.com/harrellgis/gee_utils.git", rev = "ac7704a8be53b294dcc469458e01d9e3ee6c536a" }
 
 [dependency-groups]
 dev = [
