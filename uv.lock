@@ -600,8 +600,8 @@ wheels = [
 
 [[package]]
 name = "eetools"
-version = "0.2.0"
-source = { git = "https://github.com/harrellgis/gee_utils.git?rev=ac7704a8be53b294dcc469458e01d9e3ee6c536a#ac7704a8be53b294dcc469458e01d9e3ee6c536a" }
+version = "0.3.0"
+source = { git = "https://github.com/harrellgis/gee_utils.git?tag=v0.3.0#62a2789cdfbfa5c8cbd28ac1c312d0ab5b0b76cb" }
 dependencies = [
     { name = "earthengine-api" },
     { name = "geopandas" },
@@ -645,7 +645,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "eetools", extras = ["notebook"], git = "https://github.com/harrellgis/gee_utils.git?rev=ac7704a8be53b294dcc469458e01d9e3ee6c536a" },
+    { name = "eetools", extras = ["notebook"], git = "https://github.com/harrellgis/gee_utils.git?tag=v0.3.0" },
     { name = "geopandas", specifier = ">=1.1.4" },
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "mapclassify", specifier = ">=2.10.0" },
